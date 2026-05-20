@@ -1,5 +1,5 @@
-use super::node::Node;
+use crate::store::NodeId;
 
 pub struct RootNode {
-    children: Vec<Node>,
+    children: Vec<NodeId>,
 }
