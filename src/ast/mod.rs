@@ -5,3 +5,5 @@ mod interpolate_node;
 mod node;
 mod root_node;
 mod text_node;
+
+pub use node::Node;
