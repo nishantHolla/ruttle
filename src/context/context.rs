@@ -42,4 +42,16 @@ impl Context {
 
         Ok(ctx)
     }
+
+    pub fn complete(&mut self) -> Result<(), ContextError> {
+        // TODO: Implement this
+        Ok(())
+    }
+
+    pub fn finalize(&self) -> Result<(), ContextError> {
+        self.out_map.save(&self.file_store).map_err(|e| {
+            let s = format!("Failed to finalize context\n{}", e.to_string());
+            ContextError::FinalizationError(s)
+        })
+    }
 }

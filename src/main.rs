@@ -12,5 +12,8 @@ fn run() -> Result<(), TerusError> {
     let args = Args::parse();
     let mut context = Context::new(&args)?;
 
+    context.complete()?;
+    context.finalize()?;
+
     Ok(())
 }

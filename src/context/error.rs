@@ -4,4 +4,16 @@ use thiserror::Error;
 pub enum ContextError {
     #[error("{0}")]
     InitializationError(String),
+
+    #[error("{0}")]
+    FinalizationError(String),
+}
+
+#[derive(Debug, Error)]
+pub enum OutMapError {
+    #[error("{0}")]
+    FileMissingError(String),
+
+    #[error("{0}")]
+    WriteError(String),
 }
