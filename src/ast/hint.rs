@@ -6,3 +6,13 @@ pub struct Hint {
     start: usize,
     end: usize,
 }
+
+impl Hint {
+    pub fn new(file_id: FileId, start: usize, end: usize) -> Self {
+        Self {
+            file_id,
+            start,
+            end,
+        }
+    }
+}

@@ -15,4 +15,8 @@ impl AstMap {
     pub fn has_ast_for(&self, file_id: FileId) -> bool {
         self.map.contains_key(&file_id)
     }
+
+    pub fn insert(&mut self, file_id: FileId, node_id: NodeId) {
+        self.map.insert(file_id, node_id);
+    }
 }

@@ -4,6 +4,7 @@ use super::error::ContextError;
 use super::in_stack::InStack;
 use super::out_map::OutMap;
 use crate::Args;
+use crate::ast;
 use crate::store::{FileId, FileStore, NodeStore, error::FileStoreError};
 
 pub struct Context {
@@ -60,13 +61,28 @@ impl Context {
     fn generate(&mut self, file_id: FileId) -> Result<String, ContextError> {
         let mut result = String::new();
 
-        let path = self.file_store.get_by_id(file_id).ok_or_else(|| {
-            let s = format!("Could not find the stored file with id {:?}", file_id);
-            ContextError::GenerationError(s)
-        })?;
+        let path = self
+            .file_store
+            .get_by_id(file_id)
+            .ok_or_else(|| {
+                let s = format!("Could not find the stored file with id {:?}", file_id);
+                ContextError::GenerationError(s)
+            })?
+            .to_path_buf();
 
         if !self.ast_map.has_ast_for(file_id) {
-            // TODO: Build ast
+            let root_id = ast::from_file(file_id, &mut self.file_store, &mut self.node_store)
+                .map_err(|e| {
+                    let s = format!(
+                        "Failed to generate ast from context for path {}\n{}",
+                        path.display(),
+                        e.to_string()
+                    );
+
+                    ContextError::GenerationError(s)
+                })?;
+
+            self.ast_map.insert(file_id, root_id);
         }
 
         // TODO: Traverse ast
