@@ -1,6 +1,7 @@
 use super::error::AstError;
 use super::hint::Hint;
 use super::node::Node;
+use crate::config::{DEFINE_DIRECTIVE_START, DIRECTIVE_END, KV_SPLIT};
 
 pub struct DefineNode {
     key: String,
@@ -11,11 +12,11 @@ pub struct DefineNode {
 impl DefineNode {
     pub fn parse(s: &str, hint: Hint) -> Result<Node, AstError> {
         let inner = s
-            .trim_start_matches("{#define")
-            .trim_end_matches("}")
+            .trim_start_matches(DEFINE_DIRECTIVE_START)
+            .trim_end_matches(DIRECTIVE_END)
             .trim();
 
-        let mut parts = inner.split("=");
+        let mut parts = inner.split(KV_SPLIT);
 
         let key = parts
             .next()

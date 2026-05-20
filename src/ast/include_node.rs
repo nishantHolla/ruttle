@@ -1,6 +1,7 @@
 use super::error::AstError;
 use super::hint::Hint;
 use super::node::Node;
+use crate::config::{DIRECTIVE_END, INCLUDE_DIRECTIVE_START, KV_SPLIT};
 use crate::store::{FileId, FileStore};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -14,8 +15,8 @@ pub struct IncludeNode {
 impl IncludeNode {
     pub fn parse(s: &str, hint: Hint, fs: &mut FileStore) -> Result<Node, AstError> {
         let inner = s
-            .trim_start_matches("{#include")
-            .trim_end_matches("}")
+            .trim_start_matches(INCLUDE_DIRECTIVE_START)
+            .trim_end_matches(DIRECTIVE_END)
             .trim();
 
         let mut parts = inner.split_whitespace();
@@ -48,7 +49,7 @@ impl IncludeNode {
 
         let mut props: HashMap<String, String> = HashMap::new();
         for part in parts {
-            let mut kv = part.split('=');
+            let mut kv = part.split(KV_SPLIT);
 
             let key = kv.next().ok_or_else(|| {
                 let s = format!("Failed to find 'key' of prop in INCLUDE directive");

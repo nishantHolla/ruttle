@@ -1,5 +1,6 @@
 use super::error::AstError;
 use super::hint::Hint;
+use crate::config;
 use crate::store::{FileId, FileStore, NodeId, NodeStore};
 use crate::util;
 use regex::Regex;
@@ -13,11 +14,11 @@ use super::root_node::RootNode;
 use super::text_node::TextNode;
 
 fn parse_directive(s: &str, hint: Hint, fs: &mut FileStore) -> Result<Node, AstError> {
-    if s.starts_with("{#define") {
+    if s.starts_with(config::DEFINE_DIRECTIVE_START) {
         DefineNode::parse(s, hint)
-    } else if s.starts_with("#{value") {
+    } else if s.starts_with(config::INTERPOLATE_DIRECTIVE_START) {
         InterpolateNode::parse(s, hint)
-    } else if s.starts_with("{#include") {
+    } else if s.starts_with(config::INCLUDE_DIRECTIVE_START) {
         IncludeNode::parse(s, hint, fs)
     } else {
         let s = format!("Found unknown directive {}", s);
@@ -26,7 +27,7 @@ fn parse_directive(s: &str, hint: Hint, fs: &mut FileStore) -> Result<Node, AstE
 }
 
 static DIRECTIVE_RE: std::sync::LazyLock<Regex> =
-    std::sync::LazyLock::new(|| Regex::new(r"\{#(define|value|include)\b").unwrap());
+    std::sync::LazyLock::new(|| Regex::new(config::DIRECTIVE_REGEX).unwrap());
 
 fn parse(
     input: &str,
