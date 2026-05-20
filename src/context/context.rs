@@ -4,7 +4,7 @@ use super::error::ContextError;
 use super::in_stack::InStack;
 use super::out_map::OutMap;
 use crate::Args;
-use crate::store::{FileStore, error::FileStoreError};
+use crate::store::{FileId, FileStore, error::FileStoreError};
 
 pub struct Context {
     pub ast_map: AstMap,
@@ -44,8 +44,20 @@ impl Context {
     }
 
     pub fn complete(&mut self) -> Result<(), ContextError> {
-        // TODO: Implement this
+        while !self.in_stack.empty() {
+            let current = self.in_stack.pop().unwrap();
+            self.call_stack.push(current, None);
+
+            let result = self.generate(current)?;
+            self.out_map.insert(current, result);
+        }
+
         Ok(())
+    }
+
+    fn generate(&mut self, file_id: FileId) -> Result<String, ContextError> {
+        // TODO: Complete this
+        Ok(String::from("Hello"))
     }
 
     pub fn finalize(&self) -> Result<(), ContextError> {

@@ -20,6 +20,10 @@ impl OutMap {
         }
     }
 
+    pub fn insert(&mut self, file_id: FileId, string: impl Into<String>) {
+        self.map.insert(file_id, string.into());
+    }
+
     pub fn save(&self, file_store: &FileStore) -> Result<(), OutMapError> {
         for (file_id, output) in &self.map {
             let file_path = file_store.get_by_id(*file_id).ok_or_else(|| {
