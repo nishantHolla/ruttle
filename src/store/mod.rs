@@ -1,4 +1,4 @@
-mod error;
+pub mod error;
 mod file_store;
 mod node_store;
 
