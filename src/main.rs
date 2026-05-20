@@ -1,3 +1,9 @@
+use clap::Parser;
+use terus::Args;
+
 fn main() {
-    println!("Hello, world!");
+    let args = Args::parse();
+
+    println!("Inputs: {:?}", args.inputs);
+    println!("Output: {:?}", args.output);
 }
