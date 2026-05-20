@@ -6,6 +6,9 @@ pub enum ContextError {
     InitializationError(String),
 
     #[error("{0}")]
+    GenerationError(String),
+
+    #[error("{0}")]
     FinalizationError(String),
 }
 

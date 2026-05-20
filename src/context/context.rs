@@ -4,7 +4,7 @@ use super::error::ContextError;
 use super::in_stack::InStack;
 use super::out_map::OutMap;
 use crate::Args;
-use crate::store::{FileId, FileStore, error::FileStoreError};
+use crate::store::{FileId, FileStore, NodeStore, error::FileStoreError};
 
 pub struct Context {
     pub ast_map: AstMap,
@@ -12,6 +12,7 @@ pub struct Context {
     pub call_stack: CallStack,
     pub out_map: OutMap,
     pub file_store: FileStore,
+    pub node_store: NodeStore,
 }
 
 impl Context {
@@ -22,6 +23,7 @@ impl Context {
             call_stack: CallStack::new(),
             out_map: OutMap::new(&args.output),
             file_store: FileStore::new(),
+            node_store: NodeStore::new(),
         };
 
         // Add all the input files to the file store
@@ -56,8 +58,20 @@ impl Context {
     }
 
     fn generate(&mut self, file_id: FileId) -> Result<String, ContextError> {
-        // TODO: Complete this
-        Ok(String::from("Hello"))
+        let mut result = String::new();
+
+        let path = self.file_store.get_by_id(file_id).ok_or_else(|| {
+            let s = format!("Could not find the stored file with id {:?}", file_id);
+            ContextError::GenerationError(s)
+        })?;
+
+        if !self.ast_map.has_ast_for(file_id) {
+            // TODO: Build ast
+        }
+
+        // TODO: Traverse ast
+
+        Ok(result)
     }
 
     pub fn finalize(&self) -> Result<(), ContextError> {
