@@ -17,6 +17,18 @@ impl Hint {
         }
     }
 
+    pub fn file_id(&self) -> FileId {
+        self.file_id
+    }
+
+    pub fn start(&self) -> usize {
+        self.start
+    }
+
+    pub fn end(&self) -> usize {
+        self.end
+    }
+
     pub fn to_string(&self) -> String {
         format!("Hint({:?}, {}, {})", self.file_id, self.start, self.end)
     }

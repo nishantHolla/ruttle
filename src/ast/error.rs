@@ -16,4 +16,7 @@ pub enum AstError {
 
     #[error("{0}")]
     InvalidSyntax(String),
+
+    #[error("{0}")]
+    EvaluationFailed(String),
 }

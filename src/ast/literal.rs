@@ -1,3 +1,4 @@
+#[derive(Clone, Debug)]
 pub enum Literal {
     String(String),
     Integer(i64),

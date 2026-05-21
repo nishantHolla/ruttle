@@ -11,4 +11,5 @@ mod text_node;
 
 pub use ast::from_file;
 pub use hint::Hint;
+pub use literal::Literal;
 pub use node::Node;

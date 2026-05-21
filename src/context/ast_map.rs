@@ -20,6 +20,10 @@ impl AstMap {
         self.map.insert(file_id, node_id);
     }
 
+    pub fn get(&self, file_id: FileId) -> Option<NodeId> {
+        self.map.get(&file_id).cloned()
+    }
+
     pub fn debug(&self) {
         println!("debug: AstMap\n");
 

@@ -3,6 +3,7 @@ use super::hint::Hint;
 use super::literal::Literal;
 use super::node::Node;
 use crate::config::{DEFINE_DIRECTIVE_START, DIRECTIVE_END, KV_SPLIT};
+use crate::context::Context;
 
 pub struct DefineNode {
     key: String,
@@ -52,6 +53,11 @@ impl DefineNode {
             value: Literal::parse(value),
             hint,
         }))
+    }
+
+    pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
+        ctx.call_stack.set_definition(&self.key, self.value.clone());
+        Ok(String::new())
     }
 
     pub fn to_string(&self) -> String {

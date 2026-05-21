@@ -1,4 +1,5 @@
 use super::scope::{Fingerprint, Scope, ScopeDef};
+use crate::ast::Literal;
 use crate::store::FileId;
 
 pub struct Frame {
@@ -21,6 +22,14 @@ impl Frame {
             fingerprint,
             file_id,
         }
+    }
+
+    pub fn set_definition(&mut self, key: &str, lit: Literal) {
+        if self.scopes.len() == 0 {
+            return;
+        }
+
+        self.scopes.last_mut().unwrap().set(key, lit);
     }
 
     pub fn to_string(&self) -> String {

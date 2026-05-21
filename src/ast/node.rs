@@ -1,8 +1,10 @@
 use super::define_node::DefineNode;
+use super::error::AstError;
 use super::include_node::IncludeNode;
 use super::interpolate_node::InterpolateNode;
 use super::root_node::RootNode;
 use super::text_node::TextNode;
+use crate::context::Context;
 use crate::store::NodeStore;
 
 pub enum Node {
@@ -21,6 +23,15 @@ impl Node {
             Node::Define(n) => n.to_string(),
             Node::Interpolate(n) => n.to_string(),
             Node::Include(n) => n.to_string(),
+        }
+    }
+
+    pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
+        match self {
+            Node::Root(n) => n.evaluate(ctx),
+            Node::Text(n) => n.evaluate(ctx),
+            Node::Define(n) => n.evaluate(ctx),
+            _ => Ok(String::new()),
         }
     }
 

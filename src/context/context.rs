@@ -56,14 +56,14 @@ impl Context {
 
             let result = self.generate(current)?;
             self.out_map.insert(current, result);
+
+            self.call_stack.pop();
         }
 
         Ok(())
     }
 
     fn generate(&mut self, file_id: FileId) -> Result<String, ContextError> {
-        let result = String::new();
-
         let path = self
             .file_store
             .get_by_id(file_id)
@@ -87,8 +87,19 @@ impl Context {
             self.ast_map.insert(file_id, root_id);
         }
 
-        // TODO: Traverse ast
+        let node_id = self.ast_map.get(file_id).unwrap();
+        let node = self.node_store.take(node_id).unwrap();
 
+        let result = node.evaluate(self).map_err(|e| {
+            let s = format!(
+                "Failed to evaluate file {}\n{}",
+                path.display(),
+                e.to_string()
+            );
+            ContextError::GenerationError(s)
+        })?;
+
+        self.node_store.put_back(node_id, node);
         Ok(result)
     }
 
