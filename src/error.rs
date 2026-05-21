@@ -18,11 +18,11 @@ impl TerusError {
         let mut lines = s.lines();
 
         if let Some(first) = lines.next() {
-            eprintln!("error: {}", first);
+            eprintln!("error: -> {}", first);
         }
 
         for line in lines {
-            eprintln!("       {}", line);
+            eprintln!("       -> {}", line);
         }
 
         if let Some(ctx) = ctx {
