@@ -10,6 +10,7 @@ fn main() {
 
 fn run() -> Result<(), TerusError> {
     let args = Args::parse();
+    let args = Args::validate_and_transform(args)?;
     let mut context = Context::new(&args)?;
 
     context.complete()?;

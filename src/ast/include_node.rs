@@ -1,8 +1,10 @@
+use super::ast;
 use super::error::AstError;
 use super::hint::Hint;
 use super::node::Node;
 use crate::config::{DIRECTIVE_END, INCLUDE_DIRECTIVE_START, KV_SPLIT};
-use crate::store::{FileId, FileStore};
+use crate::context::Context;
+use crate::store::FileId;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -13,7 +15,7 @@ pub struct IncludeNode {
 }
 
 impl IncludeNode {
-    pub fn parse(s: &str, hint: Hint, fs: &mut FileStore) -> Result<Node, AstError> {
+    pub fn parse(s: &str, hint: Hint, ctx: &mut Context) -> Result<Node, AstError> {
         let inner = s
             .trim_start_matches(INCLUDE_DIRECTIVE_START)
             .trim_end_matches(DIRECTIVE_END)
@@ -35,9 +37,9 @@ impl IncludeNode {
             AstError::InvalidSyntax(s)
         })?;
 
-        let file_id = match fs.get_by_path(&path) {
+        let file_id = match ctx.file_store.get_by_path(&path) {
             Some(id) => Ok(id),
-            None => fs.add(&path).map_err(|e| {
+            None => ctx.file_store.add(&path).map_err(|e| {
                 let s = format!(
                     "Failed to find the include path {} in INCLUDE directive\n{}",
                     path.display(),
@@ -46,6 +48,19 @@ impl IncludeNode {
                 AstError::InvalidSyntax(s)
             }),
         }?;
+
+        if !ctx.ast_map.has_ast_for(file_id) {
+            let root_id = ast::from_file(file_id, ctx).map_err(|e| {
+                let s = format!(
+                    "Error occured while building AST for path {}\n{}",
+                    path.display(),
+                    e.to_string()
+                );
+                AstError::ConstructionFailed(s)
+            })?;
+
+            ctx.ast_map.insert(file_id, root_id);
+        }
 
         let mut props: HashMap<String, String> = HashMap::new();
         for part in parts {

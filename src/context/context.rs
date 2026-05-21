@@ -59,7 +59,7 @@ impl Context {
     }
 
     fn generate(&mut self, file_id: FileId) -> Result<String, ContextError> {
-        let mut result = String::new();
+        let result = String::new();
 
         let path = self
             .file_store
@@ -71,16 +71,15 @@ impl Context {
             .to_path_buf();
 
         if !self.ast_map.has_ast_for(file_id) {
-            let root_id = ast::from_file(file_id, &mut self.file_store, &mut self.node_store)
-                .map_err(|e| {
-                    let s = format!(
-                        "Failed to generate AST from context for path {}\n{}",
-                        path.display(),
-                        e.to_string()
-                    );
+            let root_id = ast::from_file(file_id, self).map_err(|e| {
+                let s = format!(
+                    "Failed to generate AST from context for path {}\n{}",
+                    path.display(),
+                    e.to_string()
+                );
 
-                    ContextError::GenerationError(s)
-                })?;
+                ContextError::GenerationError(s)
+            })?;
 
             self.ast_map.insert(file_id, root_id);
         }
