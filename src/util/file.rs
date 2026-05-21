@@ -16,3 +16,13 @@ pub fn replace_extension(path: &Path, ext: &str, to: &str) -> Option<PathBuf> {
         None
     }
 }
+
+pub fn get_row_col(path: &Path, index: usize) -> Option<(usize, usize)> {
+    let content = std::fs::read_to_string(path).ok()?;
+    super::string::get_row_col(&content, index)
+}
+
+pub fn get_substr(path: &Path, start: usize, end: usize) -> Option<String> {
+    let content = std::fs::read_to_string(path).ok()?;
+    super::string::get_substr(&content, start, end)
+}

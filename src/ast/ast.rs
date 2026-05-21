@@ -17,16 +17,25 @@ static DIRECTIVE_RE: std::sync::LazyLock<Regex> =
     std::sync::LazyLock::new(|| Regex::new(config::DIRECTIVE_REGEX).unwrap());
 
 fn parse_directive(s: &str, hint: Hint, ctx: &mut Context) -> Result<Node, AstError> {
+    ctx.hint_stack.push(hint);
+    let r: Result<Node, AstError>;
+
     if s.starts_with(config::DEFINE_DIRECTIVE_START) {
-        DefineNode::parse(s, hint)
+        r = DefineNode::parse(s, hint);
     } else if s.starts_with(config::INTERPOLATE_DIRECTIVE_START) {
-        InterpolateNode::parse(s, hint)
+        r = InterpolateNode::parse(s, hint);
     } else if s.starts_with(config::INCLUDE_DIRECTIVE_START) {
-        IncludeNode::parse(s, hint, ctx)
+        r = IncludeNode::parse(s, hint, ctx);
     } else {
         let s = format!("Found unknown directive {}", s);
-        Err(AstError::UnknownDirective(s))
+        r = Err(AstError::UnknownDirective(s));
     }
+
+    if let Ok(_) = r {
+        ctx.hint_stack.pop();
+    }
+
+    return r;
 }
 
 fn parse(input: &str, file_id: FileId, ctx: &mut Context) -> Result<NodeId, AstError> {
@@ -48,6 +57,10 @@ fn parse(input: &str, file_id: FileId, ctx: &mut Context) -> Result<NodeId, AstE
 
         // Find directive end
         let end = util::string::find_directive_end(&input, mat.start()).ok_or_else(|| {
+            if let Some(end) = util::string::get_line_end_index(&input, mat.start()) {
+                ctx.hint_stack.push(Hint::new(file_id, mat.start(), end));
+            }
+
             let s = format!("Failed to find directive end");
             AstError::UnclosedDirective(s)
         })?;

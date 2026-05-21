@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 use crate::args;
-use crate::context;
+use crate::context::{self, Context};
 
 #[derive(Debug, Error)]
 pub enum TerusError {
@@ -13,7 +13,7 @@ pub enum TerusError {
 }
 
 impl TerusError {
-    pub fn print(&self) {
+    pub fn print(&self, ctx: Option<Context>) {
         let s = self.to_string();
         let mut lines = s.lines();
 
@@ -23,6 +23,11 @@ impl TerusError {
 
         for line in lines {
             eprintln!("       {}", line);
+        }
+
+        if let Some(ctx) = ctx {
+            let hint_str = ctx.hint_stack.to_string(7, &ctx.file_store);
+            eprintln!("\n{}", hint_str);
         }
     }
 }

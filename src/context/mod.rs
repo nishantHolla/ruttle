@@ -3,6 +3,7 @@ mod call_stack;
 mod context;
 pub mod error;
 mod frame;
+mod hint_stack;
 mod in_stack;
 mod out_map;
 mod scope;

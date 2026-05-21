@@ -1,6 +1,7 @@
 use super::ast_map::AstMap;
 use super::call_stack::CallStack;
 use super::error::ContextError;
+use super::hint_stack::HintStack;
 use super::in_stack::InStack;
 use super::out_map::OutMap;
 use crate::Args;
@@ -12,6 +13,7 @@ pub struct Context {
     pub in_stack: InStack,
     pub call_stack: CallStack,
     pub out_map: OutMap,
+    pub hint_stack: HintStack,
     pub file_store: FileStore,
     pub node_store: NodeStore,
 }
@@ -23,6 +25,7 @@ impl Context {
             in_stack: InStack::new(),
             call_stack: CallStack::new(),
             out_map: OutMap::new(&args.output),
+            hint_stack: HintStack::new(),
             file_store: FileStore::new(),
             node_store: NodeStore::new(),
         };

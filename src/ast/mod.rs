@@ -9,4 +9,5 @@ mod root_node;
 mod text_node;
 
 pub use ast::from_file;
+pub use hint::Hint;
 pub use node::Node;
