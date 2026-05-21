@@ -99,7 +99,7 @@ impl IncludeNode {
 
         let mut counter = 1;
         for (k, v) in &self.props {
-            props_str.push_str(&format!("{}={}", k, v.to_string()));
+            props_str.push_str(&format!("{}={}", k, v.display()));
 
             if counter != self.props.len() {
                 props_str.push_str(" ");

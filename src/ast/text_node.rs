@@ -14,6 +14,8 @@ impl TextNode {
     }
 
     pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
+        ctx.hint_stack.push(self.hint);
+
         let file_id = self.hint.file_id();
         let start = self.hint.start();
         let end = self.hint.end();
@@ -23,10 +25,13 @@ impl TextNode {
             AstError::EvaluationFailed(s)
         })?;
 
-        util::file::get_substr(path, start, end).ok_or_else(|| {
+        let substr = util::file::get_substr(path, start, end).ok_or_else(|| {
             let s = format!("Failed to extract text from file {}", path.display());
             AstError::EvaluationFailed(s)
-        })
+        })?;
+
+        ctx.hint_stack.pop();
+        Ok(substr)
     }
 
     pub fn to_string(&self) -> String {

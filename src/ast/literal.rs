@@ -18,6 +18,16 @@ impl Literal {
 
     pub fn to_string(&self) -> String {
         match self {
+            Literal::String(s) => s.to_string(),
+            Literal::Integer(i) => i.to_string(),
+            Literal::Decimal(d) => d.to_string(),
+        }
+    }
+
+    // TODO: Add evaluate method that checks for interpolation wihin string literals
+
+    pub fn display(&self) -> String {
+        match self {
             Literal::String(s) => format!("StringLit({})", s),
             Literal::Integer(i) => format!("IntegerLit({})", i),
             Literal::Decimal(d) => format!("DecimalLit({})", d),

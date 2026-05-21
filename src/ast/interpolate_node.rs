@@ -2,6 +2,7 @@ use super::error::AstError;
 use super::hint::Hint;
 use super::node::Node;
 use crate::config::{DIRECTIVE_END, INTERPOLATE_DIRECTIVE_START};
+use crate::context::Context;
 
 pub struct InterpolateNode {
     key: String,
@@ -24,6 +25,18 @@ impl InterpolateNode {
             key: inner.to_string(),
             hint,
         }))
+    }
+
+    pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
+        ctx.hint_stack.push(self.hint);
+
+        let definition = ctx.call_stack.get_definition(&self.key).ok_or_else(|| {
+            let s = format!("Variable '{}' is not definied", self.key);
+            AstError::EvaluationFailed(s)
+        })?;
+
+        ctx.hint_stack.pop();
+        Ok(definition.to_string())
     }
 
     pub fn to_string(&self) -> String {

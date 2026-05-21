@@ -25,6 +25,14 @@ impl CallStack {
         self.stack.last_mut().unwrap().set_definition(key, lit);
     }
 
+    pub fn get_definition(&self, key: &str) -> Option<&Literal> {
+        if self.stack.len() == 0 {
+            return None;
+        }
+
+        self.stack.last().unwrap().get_definition(key)
+    }
+
     pub fn pop(&mut self) {
         self.stack.pop();
     }

@@ -46,17 +46,22 @@ impl DefineNode {
             return Err(AstError::InvalidSyntax(s));
         }
 
-        let value = value.trim_matches('"');
+        let value = &value[1..value.len() - 1];
+        let value = value.replace("\\\"", "\"");
 
         Ok(Node::Define(Self {
             key: key.to_string(),
-            value: Literal::parse(value),
+            value: Literal::parse(&value),
             hint,
         }))
     }
 
     pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
+        ctx.hint_stack.push(self.hint);
+
         ctx.call_stack.set_definition(&self.key, self.value.clone());
+
+        ctx.hint_stack.pop();
         Ok(String::new())
     }
 
@@ -64,7 +69,7 @@ impl DefineNode {
         format!(
             "DefineNode({}, {}, {})",
             self.key,
-            self.value.to_string(),
+            self.value.display(),
             self.hint.to_string()
         )
     }

@@ -32,6 +32,16 @@ impl Frame {
         self.scopes.last_mut().unwrap().set(key, lit);
     }
 
+    pub fn get_definition(&self, key: &str) -> Option<&Literal> {
+        for scope in self.scopes.iter().rev() {
+            if let Some(s) = scope.get(key) {
+                return Some(s);
+            }
+        }
+
+        None
+    }
+
     pub fn to_string(&self) -> String {
         format!("Frame({:?}, {:?})", self.file_id, self.fingerprint)
     }

@@ -27,6 +27,10 @@ impl Scope {
         self.definitions.insert(key.to_string(), lit);
     }
 
+    pub fn get(&self, key: &str) -> Option<&Literal> {
+        self.definitions.get(key)
+    }
+
     pub fn fingerprint(&self, extra: Option<impl Hash>) -> Fingerprint {
         let mut hasher = DefaultHasher::new();
 
