@@ -1,11 +1,12 @@
 use super::error::AstError;
 use super::hint::Hint;
+use super::literal::Literal;
 use super::node::Node;
 use crate::config::{DEFINE_DIRECTIVE_START, DIRECTIVE_END, KV_SPLIT};
 
 pub struct DefineNode {
     key: String,
-    value: String,
+    value: Literal,
     hint: Hint,
 }
 
@@ -48,16 +49,16 @@ impl DefineNode {
 
         Ok(Node::Define(Self {
             key: key.to_string(),
-            value: value.to_string(),
+            value: Literal::parse(value),
             hint,
         }))
     }
 
     pub fn to_string(&self) -> String {
         format!(
-            "DefineNode({}, \"{}\", {})",
+            "DefineNode({}, {}, {})",
             self.key,
-            self.value,
+            self.value.to_string(),
             self.hint.to_string()
         )
     }

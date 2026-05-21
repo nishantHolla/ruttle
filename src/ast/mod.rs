@@ -4,6 +4,7 @@ pub mod error;
 mod hint;
 mod include_node;
 mod interpolate_node;
+mod literal;
 mod node;
 mod root_node;
 mod text_node;

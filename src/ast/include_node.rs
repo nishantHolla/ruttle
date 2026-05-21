@@ -1,6 +1,7 @@
 use super::ast;
 use super::error::AstError;
 use super::hint::Hint;
+use super::literal::Literal;
 use super::node::Node;
 use crate::config::{DIRECTIVE_END, INCLUDE_DIRECTIVE_START, KV_SPLIT};
 use crate::context::Context;
@@ -10,7 +11,7 @@ use std::path::PathBuf;
 
 pub struct IncludeNode {
     file_id: FileId,
-    props: HashMap<String, String>,
+    props: HashMap<String, Literal>,
     hint: Hint,
 }
 
@@ -62,7 +63,7 @@ impl IncludeNode {
             ctx.ast_map.insert(file_id, root_id);
         }
 
-        let mut props: HashMap<String, String> = HashMap::new();
+        let mut props: HashMap<String, Literal> = HashMap::new();
         for part in parts {
             let mut kv = part.split(KV_SPLIT);
 
@@ -83,7 +84,7 @@ impl IncludeNode {
 
             let value = value.trim_matches('"');
 
-            props.insert(key.to_string(), value.to_string());
+            props.insert(key.to_string(), Literal::parse(value));
         }
 
         Ok(Node::Include(Self {
@@ -98,7 +99,7 @@ impl IncludeNode {
 
         let mut counter = 1;
         for (k, v) in &self.props {
-            props_str.push_str(&format!("{}=\"{}\"", k, v));
+            props_str.push_str(&format!("{}={}", k, v.to_string()));
 
             if counter != self.props.len() {
                 props_str.push_str(" ");
