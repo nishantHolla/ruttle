@@ -15,4 +15,13 @@ impl CallStack {
         let frame = Frame::new(file_id, initial_scope);
         self.stack.push(frame);
     }
+
+    pub fn debug(&self) {
+        println!("debug: CallStack\n");
+
+        for (i, frame) in self.stack.iter().enumerate() {
+            println!("       {}: {}", i, frame.to_string());
+        }
+        println!();
+    }
 }

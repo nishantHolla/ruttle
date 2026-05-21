@@ -15,4 +15,8 @@ impl Hint {
             end,
         }
     }
+
+    pub fn to_string(&self) -> String {
+        format!("Hint({:?}, {}, {})", self.file_id, self.start, self.end)
+    }
 }

@@ -52,4 +52,18 @@ impl DefineNode {
             hint,
         }))
     }
+
+    pub fn to_string(&self) -> String {
+        format!(
+            "DefineNode({}, \"{}\", {})",
+            self.key,
+            self.value,
+            self.hint.to_string()
+        )
+    }
+
+    pub fn debug(&self, indent: usize) {
+        let indent_str = " ".repeat(indent);
+        println!("{}{}", indent_str, self.to_string());
+    }
 }

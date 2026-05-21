@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct FileId(usize);
+pub struct FileId(pub usize);
 
 pub struct FileStore {
     file_list: Vec<PathBuf>,
@@ -46,5 +46,13 @@ impl FileStore {
     pub fn get_by_path(&self, path: impl AsRef<Path>) -> Option<FileId> {
         let path = path.as_ref().canonicalize().ok()?;
         self.file_map.get(&path).copied()
+    }
+
+    pub fn debug(&self) {
+        println!("debug: FileStore\n");
+        for (pos, file_path) in self.file_list.iter().enumerate() {
+            println!("       {}: {}", pos, file_path.display());
+        }
+        println!();
     }
 }

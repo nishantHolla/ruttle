@@ -22,4 +22,8 @@ impl Frame {
             file_id,
         }
     }
+
+    pub fn to_string(&self) -> String {
+        format!("Frame({:?}, {:?})", self.file_id, self.fingerprint)
+    }
 }

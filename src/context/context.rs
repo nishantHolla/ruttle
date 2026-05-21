@@ -74,7 +74,7 @@ impl Context {
             let root_id = ast::from_file(file_id, &mut self.file_store, &mut self.node_store)
                 .map_err(|e| {
                     let s = format!(
-                        "Failed to generate ast from context for path {}\n{}",
+                        "Failed to generate AST from context for path {}\n{}",
                         path.display(),
                         e.to_string()
                     );
@@ -95,5 +95,19 @@ impl Context {
             let s = format!("Failed to finalize context\n{}", e.to_string());
             ContextError::FinalizationError(s)
         })
+    }
+
+    pub fn debug(&self) {
+        self.file_store.debug();
+        self.node_store.debug();
+        self.in_stack.debug();
+        self.call_stack.debug();
+        self.out_map.debug();
+        self.ast_map.debug();
+    }
+
+    pub fn debug_with_ast(&self) {
+        self.debug();
+        self.ast_map.debug_all_ast(&self.node_store);
     }
 }

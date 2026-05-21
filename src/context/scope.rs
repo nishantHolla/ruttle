@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 
 pub type ScopeDef = BTreeMap<String, String>;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Fingerprint(u64);
 
 pub struct Scope {

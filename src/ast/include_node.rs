@@ -61,6 +61,13 @@ impl IncludeNode {
                 AstError::InvalidSyntax(s)
             })?;
 
+            if !value.starts_with('"') || !value.ends_with('"') {
+                let s = format!("'value' of INCLUDE directive is not wrapped with double quotes");
+                return Err(AstError::InvalidSyntax(s));
+            }
+
+            let value = value.trim_matches('"');
+
             props.insert(key.to_string(), value.to_string());
         }
 
@@ -69,5 +76,32 @@ impl IncludeNode {
             props,
             hint,
         }))
+    }
+
+    pub fn to_string(&self) -> String {
+        let mut props_str = String::new();
+
+        let mut counter = 1;
+        for (k, v) in &self.props {
+            props_str.push_str(&format!("{}=\"{}\"", k, v));
+
+            if counter != self.props.len() {
+                props_str.push_str(" ");
+            }
+
+            counter += 1;
+        }
+
+        format!(
+            "IncludeNode({:?}, {}, {})",
+            self.file_id,
+            props_str,
+            self.hint.to_string()
+        )
+    }
+
+    pub fn debug(&self, indent: usize) {
+        let indent_str = " ".repeat(indent);
+        println!("{}{}", indent_str, self.to_string());
     }
 }

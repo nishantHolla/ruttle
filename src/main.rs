@@ -14,6 +14,7 @@ fn run() -> Result<(), TerusError> {
 
     context.complete()?;
     context.finalize()?;
+    context.debug_with_ast();
 
     Ok(())
 }

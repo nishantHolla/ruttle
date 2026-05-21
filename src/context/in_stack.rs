@@ -20,4 +20,13 @@ impl InStack {
     pub fn empty(&self) -> bool {
         self.stack.len() == 0
     }
+
+    pub fn debug(&self) {
+        println!("debug: InStack\n");
+
+        for (i, file_id) in self.stack.iter().enumerate() {
+            println!("       {}: {:?}", i, file_id);
+        }
+        println!();
+    }
 }

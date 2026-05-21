@@ -65,4 +65,14 @@ impl OutMap {
 
         Ok(())
     }
+
+    pub fn debug(&self) {
+        println!("debug: OutMap\n");
+
+        println!("       base: {}", self.base.display());
+        for (file_id, output) in &self.map {
+            println!("       {:?}: {}", file_id, output);
+        }
+        println!();
+    }
 }

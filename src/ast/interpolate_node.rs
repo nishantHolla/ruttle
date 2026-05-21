@@ -25,4 +25,13 @@ impl InterpolateNode {
             hint,
         }))
     }
+
+    pub fn to_string(&self) -> String {
+        format!("InterpolateNode({}, {})", self.key, self.hint.to_string())
+    }
+
+    pub fn debug(&self, indent: usize) {
+        let indent_str = " ".repeat(indent);
+        println!("{}{}", indent_str, self.to_string());
+    }
 }
