@@ -34,6 +34,7 @@ impl Hint {
             return format!("{}:{}:{}", path.display(), row, col);
         };
 
+        let line = util::string::normalize_whitespace(&line);
         let indented_line = util::string::indent_with_pipes(&line);
         return format!("{}:{}:{}\n{}", path.display(), row, col, indented_line);
     }

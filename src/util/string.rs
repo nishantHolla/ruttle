@@ -76,16 +76,7 @@ pub fn get_substr(string: &str, start: usize, end: usize) -> Option<String> {
 }
 
 pub fn get_line_end_index(string: &str, start: usize) -> Option<usize> {
-    if start >= string.len() {
-        None
-    } else {
-        let slice = &string[start..];
-        if let Some(end) = slice.find('\n') {
-            Some(start + end)
-        } else {
-            Some(string.len() - 1)
-        }
-    }
+    string.get(start..)?.find('\n').map(|i| start + i)
 }
 
 pub fn indent_with_pipes(string: &str) -> String {
@@ -96,6 +87,36 @@ pub fn indent_with_pipes(string: &str) -> String {
         result.push(c);
         if c == '\n' && i != string.len() - 1 {
             result.push_str(&indent_str);
+        }
+    }
+
+    result
+}
+
+pub fn normalize_whitespace(input: &str) -> String {
+    let mut result = String::with_capacity(input.len());
+    let mut in_quotes = false;
+    let mut prev_was_whitespace = false;
+
+    for c in input.chars() {
+        match c {
+            '"' => {
+                in_quotes = !in_quotes;
+                result.push(c);
+                prev_was_whitespace = false;
+            }
+
+            c if c.is_whitespace() && !in_quotes => {
+                if !prev_was_whitespace {
+                    result.push(' ');
+                    prev_was_whitespace = true;
+                }
+            }
+
+            _ => {
+                result.push(c);
+                prev_was_whitespace = false;
+            }
         }
     }
 
