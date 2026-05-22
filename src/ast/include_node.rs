@@ -24,26 +24,37 @@ impl IncludeNode {
 
         let mut parts = inner.split_whitespace();
 
-        let path = parts.next().ok_or_else(|| {
+        let include_path = parts.next().ok_or_else(|| {
             let s = format!("Failed to find 'path' for INCLUDE directive");
             AstError::InvalidSyntax(s)
         })?;
+        let mut include_path = PathBuf::from(include_path);
 
-        let path = PathBuf::from(path).canonicalize().map_err(|e| {
+        if include_path.is_relative() {
+            let current_path = ctx.file_store.get_by_id(hint.file_id()).ok_or_else(|| {
+                let s = format!("Failed to find path of file id {:?}", hint.file_id());
+                AstError::InvalidSyntax(s)
+            })?;
+
+            let current_base = current_path.parent().unwrap();
+            include_path = current_base.join(include_path);
+        }
+
+        let include_path = include_path.canonicalize().map_err(|e| {
             let s = format!(
                 "Failed to find the include path {} in INCLUDE directive\n{}",
-                path,
+                include_path.display(),
                 e.to_string()
             );
             AstError::InvalidSyntax(s)
         })?;
 
-        let file_id = match ctx.file_store.get_by_path(&path) {
+        let file_id = match ctx.file_store.get_by_path(&include_path) {
             Some(id) => Ok(id),
-            None => ctx.file_store.add(&path).map_err(|e| {
+            None => ctx.file_store.add(&include_path).map_err(|e| {
                 let s = format!(
                     "Failed to find the include path {} in INCLUDE directive\n{}",
-                    path.display(),
+                    include_path.display(),
                     e.to_string()
                 );
                 AstError::InvalidSyntax(s)
@@ -54,7 +65,7 @@ impl IncludeNode {
             let root_id = ast::from_file(file_id, ctx).map_err(|e| {
                 let s = format!(
                     "Error occured while building AST for path {}\n{}",
-                    path.display(),
+                    include_path.display(),
                     e.to_string()
                 );
                 AstError::ConstructionFailed(s)
