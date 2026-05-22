@@ -3,13 +3,31 @@ use std::collections::HashMap;
 
 pub struct AstMap {
     map: HashMap<FileId, NodeId>,
+    todo: Vec<FileId>,
 }
 
 impl AstMap {
     pub fn new() -> Self {
         Self {
             map: HashMap::new(),
+            todo: Vec::new(),
         }
+    }
+
+    pub fn todo_is_empty(&self) -> bool {
+        self.todo.len() == 0
+    }
+
+    pub fn has_todo(&self, file_id: FileId) -> bool {
+        self.todo.contains(&file_id)
+    }
+
+    pub fn add_todo(&mut self, file_id: FileId) {
+        self.todo.push(file_id)
+    }
+
+    pub fn pop_todo(&mut self) -> Option<FileId> {
+        self.todo.pop()
     }
 
     pub fn has_ast_for(&self, file_id: FileId) -> bool {

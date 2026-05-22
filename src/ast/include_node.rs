@@ -1,4 +1,3 @@
-use super::ast;
 use super::error::AstError;
 use super::hint::Hint;
 use super::literal::Literal;
@@ -62,16 +61,7 @@ impl IncludeNode {
         }?;
 
         if !ctx.ast_map.has_ast_for(file_id) {
-            let root_id = ast::from_file(file_id, ctx).map_err(|e| {
-                let s = format!(
-                    "Error occured while building AST for path {}\n{}",
-                    include_path.display(),
-                    e.to_string()
-                );
-                AstError::ConstructionFailed(s)
-            })?;
-
-            ctx.ast_map.insert(file_id, root_id);
+            ctx.ast_map.add_todo(file_id);
         }
 
         let mut props: BTreeMap<String, Literal> = BTreeMap::new();

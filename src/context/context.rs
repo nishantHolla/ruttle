@@ -64,6 +64,39 @@ impl Context {
     }
 
     pub fn generate(&mut self, file_id: FileId) -> Result<String, ContextError> {
+        self.ast_map.add_todo(file_id);
+
+        while !self.ast_map.todo_is_empty() {
+            let file_id = self.ast_map.pop_todo().unwrap();
+
+            if self.ast_map.has_ast_for(file_id) {
+                continue;
+            }
+
+            let path = self
+                .file_store
+                .get_by_id(file_id)
+                .ok_or_else(|| {
+                    let s = format!("Could not find the stored file with id {:?}", file_id);
+                    ContextError::GenerationError(s)
+                })?
+                .to_path_buf();
+
+            if !self.ast_map.has_ast_for(file_id) {
+                let root_id = ast::from_file(file_id, self).map_err(|e| {
+                    let s = format!(
+                        "Failed to construct AST from context for path {}\n{}",
+                        path.display(),
+                        e.to_string()
+                    );
+
+                    ContextError::GenerationError(s)
+                })?;
+
+                self.ast_map.insert(file_id, root_id);
+            }
+        }
+
         let path = self
             .file_store
             .get_by_id(file_id)
@@ -73,22 +106,11 @@ impl Context {
             })?
             .to_path_buf();
 
-        if !self.ast_map.has_ast_for(file_id) {
-            let root_id = ast::from_file(file_id, self).map_err(|e| {
-                let s = format!(
-                    "Failed to construct AST from context for path {}\n{}",
-                    path.display(),
-                    e.to_string()
-                );
-
-                ContextError::GenerationError(s)
-            })?;
-
-            self.ast_map.insert(file_id, root_id);
-        }
-
         let node_id = self.ast_map.get(file_id).unwrap();
-        let node = self.node_store.take(node_id).unwrap();
+        let node = self.node_store.take(node_id).ok_or_else(|| {
+            let s = format!("Infinite include detected");
+            ContextError::GenerationError(s)
+        })?;
 
         let result = node.evaluate(self).map_err(|e| {
             let s = format!(
