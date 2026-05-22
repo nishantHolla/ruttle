@@ -1,3 +1,4 @@
+use super::error::ContextError;
 use super::frame::Frame;
 use super::scope::ScopeDef;
 use crate::ast::Literal;
@@ -12,9 +13,22 @@ impl CallStack {
         Self { stack: Vec::new() }
     }
 
-    pub fn push(&mut self, file_id: FileId, initial_scope: Option<ScopeDef>) {
+    pub fn push(
+        &mut self,
+        file_id: FileId,
+        initial_scope: Option<ScopeDef>,
+    ) -> Result<(), ContextError> {
         let frame = Frame::new(file_id, initial_scope);
+
+        for existing_frame in &self.stack {
+            if frame.fingerprint() == existing_frame.fingerprint() {
+                let s = format!("Duplicate frame detected");
+                return Err(ContextError::DuplicatePush(s));
+            }
+        }
+
         self.stack.push(frame);
+        Ok(())
     }
 
     pub fn set_definition(&mut self, key: &str, lit: Literal) {

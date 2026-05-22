@@ -24,6 +24,10 @@ impl Frame {
         }
     }
 
+    pub fn fingerprint(&self) -> Fingerprint {
+        self.fingerprint
+    }
+
     pub fn set_definition(&mut self, key: &str, lit: Literal) {
         if self.scopes.len() == 0 {
             return;

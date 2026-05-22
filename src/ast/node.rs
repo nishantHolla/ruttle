@@ -32,7 +32,7 @@ impl Node {
             Node::Text(n) => n.evaluate(ctx),
             Node::Define(n) => n.evaluate(ctx),
             Node::Interpolate(n) => n.evaluate(ctx),
-            _ => Ok(String::new()),
+            Node::Include(n) => n.evaluate(ctx),
         }
     }
 

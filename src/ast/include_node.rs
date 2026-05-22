@@ -6,12 +6,12 @@ use super::node::Node;
 use crate::config::{DIRECTIVE_END, INCLUDE_DIRECTIVE_START, KV_SPLIT};
 use crate::context::Context;
 use crate::store::FileId;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 pub struct IncludeNode {
     file_id: FileId,
-    props: HashMap<String, Literal>,
+    props: BTreeMap<String, Literal>,
     hint: Hint,
 }
 
@@ -74,7 +74,7 @@ impl IncludeNode {
             ctx.ast_map.insert(file_id, root_id);
         }
 
-        let mut props: HashMap<String, Literal> = HashMap::new();
+        let mut props: BTreeMap<String, Literal> = BTreeMap::new();
         for part in parts {
             let mut kv = part.split(KV_SPLIT);
 
@@ -103,6 +103,30 @@ impl IncludeNode {
             props,
             hint,
         }))
+    }
+
+    pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
+        ctx.hint_stack.push(self.hint);
+
+        ctx.call_stack
+            .push(self.file_id, Some(self.props.clone()))
+            .map_err(|e| {
+                let path = ctx.file_store.get_by_id(self.file_id).unwrap();
+                let s = format!(
+                    "Recursive include detected in path {}\n{}",
+                    path.display(),
+                    e.to_string()
+                );
+                AstError::EvaluationFailed(s)
+            })?;
+
+        let result = ctx.generate(self.file_id).map_err(|e| {
+            let s = format!("Failed to evaluate included path\n{}", e.to_string());
+            AstError::EvaluationFailed(s)
+        })?;
+
+        ctx.hint_stack.pop();
+        Ok(result)
     }
 
     pub fn to_string(&self) -> String {

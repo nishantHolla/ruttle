@@ -10,6 +10,9 @@ pub enum ContextError {
 
     #[error("{0}")]
     FinalizationError(String),
+
+    #[error("{0}")]
+    DuplicatePush(String),
 }
 
 #[derive(Debug, Error)]

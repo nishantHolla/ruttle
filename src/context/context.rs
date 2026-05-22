@@ -52,7 +52,7 @@ impl Context {
     pub fn complete(&mut self) -> Result<(), ContextError> {
         while !self.in_stack.empty() {
             let current = self.in_stack.pop().unwrap();
-            self.call_stack.push(current, None);
+            self.call_stack.push(current, None).unwrap();
 
             let result = self.generate(current)?;
             self.out_map.insert(current, result);
@@ -63,7 +63,7 @@ impl Context {
         Ok(())
     }
 
-    fn generate(&mut self, file_id: FileId) -> Result<String, ContextError> {
+    pub fn generate(&mut self, file_id: FileId) -> Result<String, ContextError> {
         let path = self
             .file_store
             .get_by_id(file_id)
