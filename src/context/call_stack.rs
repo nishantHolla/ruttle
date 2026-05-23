@@ -31,6 +31,10 @@ impl CallStack {
         Ok(())
     }
 
+    pub fn pop(&mut self) {
+        self.stack.pop();
+    }
+
     pub fn set_definition(&mut self, key: &str, lit: Literal) {
         if self.stack.len() == 0 {
             return;
@@ -47,8 +51,20 @@ impl CallStack {
         self.stack.last().unwrap().get_definition(key)
     }
 
-    pub fn pop(&mut self) {
-        self.stack.pop();
+    pub fn enter_new_scope(&mut self) {
+        if self.stack.len() == 0 {
+            return;
+        }
+
+        self.stack.last_mut().unwrap().enter_new_scope();
+    }
+
+    pub fn exit_current_scope(&mut self) {
+        if self.stack.len() == 0 {
+            return;
+        }
+
+        self.stack.last_mut().unwrap().exit_current_scope();
     }
 
     pub fn debug(&self) {

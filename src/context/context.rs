@@ -83,7 +83,7 @@ impl Context {
                 .to_path_buf();
 
             if !self.ast_map.has_ast_for(file_id) {
-                let root_id = ast::from_file(file_id, self).map_err(|e| {
+                let root_id = ast::from_file(file_id, self, None, None).map_err(|e| {
                     let s = format!(
                         "Failed to construct AST from context for path {}\n{}",
                         path.display(),

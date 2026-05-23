@@ -46,6 +46,14 @@ impl Frame {
         None
     }
 
+    pub fn enter_new_scope(&mut self) {
+        self.scopes.push(Scope::new());
+    }
+
+    pub fn exit_current_scope(&mut self) {
+        self.scopes.pop();
+    }
+
     pub fn to_string(&self) -> String {
         format!("Frame({:?}, {:?})", self.file_id, self.fingerprint)
     }

@@ -12,10 +12,12 @@ pub struct WithNode {
     file_id: FileId,
     root_node_id: NodeId,
     identifier: String,
+    hint: Hint,
 }
 
 impl WithNode {
     pub fn parse(s: &str, hint: Hint, ctx: &mut Context) -> Result<Node, AstError> {
+        let initial_s = s.to_string();
         let s = util::string::normalize_whitespace(s, Some(4));
 
         let inner = s
@@ -82,19 +84,44 @@ impl WithNode {
             AstError::InvalidSyntax(s)
         })?;
 
-        let root_node_id = ast::from_string(body, file_id, ctx).map_err(|e| {
-            let s = format!(
-                "Failed to parse 'body' of WITH directive\n{}",
-                e.to_string()
-            );
-            AstError::InvalidSyntax(s)
-        })?;
+        let start_pos = initial_s.find(body).unwrap() + hint.start();
+        let root_node_id =
+            ast::from_file(hint.file_id(), ctx, Some(start_pos), Some(hint.end() - 1)).map_err(
+                |e| {
+                    let s = format!(
+                        "Failed to parse 'body' of WITH directive\n{}",
+                        e.to_string()
+                    );
+                    AstError::InvalidSyntax(s)
+                },
+            )?;
 
         Ok(Node::With(Self {
             identifier: identifier.to_string(),
             file_id,
             root_node_id,
+            hint,
         }))
+    }
+
+    pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
+        ctx.hint_stack.push(self.hint);
+        ctx.call_stack.enter_new_scope();
+
+        let root = ctx.node_store.take(self.root_node_id).ok_or_else(|| {
+            let s = format!("Failed to find node with id {:?}", self.root_node_id);
+            AstError::EvaluationFailed(s)
+        })?;
+
+        let result = root.evaluate(ctx).map_err(|e| {
+            let s = format!("Failed to evaluate WITH directive body\n{}", e.to_string());
+            AstError::EvaluationFailed(s)
+        })?;
+
+        ctx.node_store.put_back(self.root_node_id, root);
+        ctx.call_stack.exit_current_scope();
+        ctx.hint_stack.pop();
+        Ok(result)
     }
 
     pub fn to_string(&self) -> String {

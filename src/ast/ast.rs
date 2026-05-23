@@ -41,11 +41,20 @@ fn parse_directive(s: &str, hint: Hint, ctx: &mut Context) -> Result<Node, AstEr
     return r;
 }
 
-fn parse(input: &str, file_id: FileId, ctx: &mut Context) -> Result<NodeId, AstError> {
+fn parse(
+    input: &str,
+    file_id: FileId,
+    ctx: &mut Context,
+    start_pos: Option<usize>,
+    end_pos: Option<usize>,
+) -> Result<NodeId, AstError> {
     let mut nodes: Vec<NodeId> = Vec::new();
-    let mut cursor = 0;
+    let mut cursor = start_pos.unwrap_or(0);
+    let end_pos = end_pos.unwrap_or(input.len() - 1);
 
-    while let Some(mat) = DIRECTIVE_RE.find_at(input, cursor) {
+    while cursor <= end_pos
+        && let Some(mat) = DIRECTIVE_RE.find_at(input, cursor)
+    {
         // Emit text before directive
         if mat.start() > cursor {
             let text = &input[cursor..mat.start()];
@@ -81,11 +90,11 @@ fn parse(input: &str, file_id: FileId, ctx: &mut Context) -> Result<NodeId, AstE
     }
 
     // Remaining text
-    if cursor < input.len() {
-        let text = &input[cursor..];
+    if cursor < end_pos {
+        let text = &input[cursor..=end_pos];
 
         if text.trim().len() > 0 {
-            let hint = Hint::new(file_id, cursor, input.len() - 1);
+            let hint = Hint::new(file_id, cursor, end_pos);
             let node = TextNode::parse(hint)?;
             let node_id = ctx.node_store.add(node);
             nodes.push(node_id);
@@ -98,7 +107,12 @@ fn parse(input: &str, file_id: FileId, ctx: &mut Context) -> Result<NodeId, AstE
     Ok(root_node_id)
 }
 
-pub fn from_file(file_id: FileId, ctx: &mut Context) -> Result<NodeId, AstError> {
+pub fn from_file(
+    file_id: FileId,
+    ctx: &mut Context,
+    start_pos: Option<usize>,
+    end_pos: Option<usize>,
+) -> Result<NodeId, AstError> {
     let path = ctx.file_store.get_by_id(file_id).ok_or_else(|| {
         let s = format!(
             "Failed to find file for AST construction with file id {:?}",
@@ -124,9 +138,5 @@ pub fn from_file(file_id: FileId, ctx: &mut Context) -> Result<NodeId, AstError>
         AstError::ConstructionFailed(s)
     })?;
 
-    parse(&content, file_id, ctx)
-}
-
-pub fn from_string(content: &str, file_id: FileId, ctx: &mut Context) -> Result<NodeId, AstError> {
-    parse(content, file_id, ctx)
+    parse(&content, file_id, ctx, start_pos, end_pos)
 }

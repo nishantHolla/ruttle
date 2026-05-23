@@ -36,7 +36,7 @@ impl Node {
             Node::Define(n) => n.evaluate(ctx),
             Node::Interpolate(n) => n.evaluate(ctx),
             Node::Include(n) => n.evaluate(ctx),
-            Node::With(n) => Ok(String::new()),
+            Node::With(n) => n.evaluate(ctx),
         }
     }
 

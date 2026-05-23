@@ -118,6 +118,7 @@ impl IncludeNode {
             AstError::EvaluationFailed(s)
         })?;
 
+        ctx.call_stack.pop();
         ctx.hint_stack.pop();
         Ok(result)
     }
