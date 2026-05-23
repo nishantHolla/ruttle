@@ -8,6 +8,7 @@ mod literal;
 mod node;
 mod root_node;
 mod text_node;
+mod with_node;
 
 pub use ast::from_file;
 pub use hint::Hint;

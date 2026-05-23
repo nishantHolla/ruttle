@@ -12,6 +12,7 @@ use super::interpolate_node::InterpolateNode;
 use super::node::Node;
 use super::root_node::RootNode;
 use super::text_node::TextNode;
+use super::with_node::WithNode;
 
 static DIRECTIVE_RE: std::sync::LazyLock<Regex> =
     std::sync::LazyLock::new(|| Regex::new(config::DIRECTIVE_REGEX).unwrap());
@@ -26,6 +27,8 @@ fn parse_directive(s: &str, hint: Hint, ctx: &mut Context) -> Result<Node, AstEr
         r = InterpolateNode::parse(&s, hint);
     } else if s.starts_with(config::INCLUDE_DIRECTIVE_START) {
         r = IncludeNode::parse(&s, hint, ctx);
+    } else if s.starts_with(config::WITH_DIRECTIVE_START) {
+        r = WithNode::parse(&s, hint, ctx);
     } else {
         let s = format!("Found unknown directive {}", s);
         r = Err(AstError::UnknownDirective(s));
@@ -122,4 +125,8 @@ pub fn from_file(file_id: FileId, ctx: &mut Context) -> Result<NodeId, AstError>
     })?;
 
     parse(&content, file_id, ctx)
+}
+
+pub fn from_string(content: &str, file_id: FileId, ctx: &mut Context) -> Result<NodeId, AstError> {
+    parse(content, file_id, ctx)
 }
