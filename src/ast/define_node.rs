@@ -4,6 +4,7 @@ use super::literal::Literal;
 use super::node::Node;
 use crate::config::{DEFINE_DIRECTIVE_START, DIRECTIVE_END, KV_SPLIT};
 use crate::context::Context;
+use crate::util;
 
 pub struct DefineNode {
     key: String,
@@ -13,6 +14,8 @@ pub struct DefineNode {
 
 impl DefineNode {
     pub fn parse(s: &str, hint: Hint) -> Result<Node, AstError> {
+        let s = util::string::normalize_whitespace(s, None);
+
         let inner = s
             .trim_start_matches(DEFINE_DIRECTIVE_START)
             .trim_end_matches(DIRECTIVE_END)

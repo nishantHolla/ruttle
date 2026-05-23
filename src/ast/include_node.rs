@@ -5,6 +5,7 @@ use super::node::Node;
 use crate::config::{DIRECTIVE_END, INCLUDE_DIRECTIVE_START, KV_SPLIT};
 use crate::context::Context;
 use crate::store::FileId;
+use crate::util;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
@@ -16,6 +17,8 @@ pub struct IncludeNode {
 
 impl IncludeNode {
     pub fn parse(s: &str, hint: Hint, ctx: &mut Context) -> Result<Node, AstError> {
+        let s = util::string::normalize_whitespace(s, None);
+
         let inner = s
             .trim_start_matches(INCLUDE_DIRECTIVE_START)
             .trim_end_matches(DIRECTIVE_END)

@@ -17,17 +17,15 @@ static DIRECTIVE_RE: std::sync::LazyLock<Regex> =
     std::sync::LazyLock::new(|| Regex::new(config::DIRECTIVE_REGEX).unwrap());
 
 fn parse_directive(s: &str, hint: Hint, ctx: &mut Context) -> Result<Node, AstError> {
-    let normalized_s = util::string::normalize_whitespace(s);
-
     ctx.hint_stack.push(hint);
     let r: Result<Node, AstError>;
 
     if s.starts_with(config::DEFINE_DIRECTIVE_START) {
-        r = DefineNode::parse(&normalized_s, hint);
+        r = DefineNode::parse(&s, hint);
     } else if s.starts_with(config::INTERPOLATE_DIRECTIVE_START) {
-        r = InterpolateNode::parse(&normalized_s, hint);
+        r = InterpolateNode::parse(&s, hint);
     } else if s.starts_with(config::INCLUDE_DIRECTIVE_START) {
-        r = IncludeNode::parse(&normalized_s, hint, ctx);
+        r = IncludeNode::parse(&s, hint, ctx);
     } else {
         let s = format!("Found unknown directive {}", s);
         r = Err(AstError::UnknownDirective(s));

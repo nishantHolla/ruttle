@@ -93,20 +93,40 @@ pub fn indent_with_pipes(string: &str) -> String {
     result
 }
 
-pub fn normalize_whitespace(input: &str) -> String {
+pub fn normalize_whitespace(input: &str, limit: Option<usize>) -> String {
     let mut result = String::with_capacity(input.len());
     let mut in_quotes = false;
     let mut prev_was_whitespace = false;
+    let mut count: usize = 0;
+    let mut done = false;
 
     for c in input.chars() {
         match c {
             '"' => {
+                if done {
+                    result.push(c);
+                    continue;
+                }
+
                 in_quotes = !in_quotes;
                 result.push(c);
+                if prev_was_whitespace {
+                    count += 1;
+                    if let Some(target) = limit
+                        && count >= target
+                    {
+                        done = true;
+                    }
+                }
                 prev_was_whitespace = false;
             }
 
             c if c.is_whitespace() && !in_quotes => {
+                if done {
+                    result.push(c);
+                    continue;
+                }
+
                 if !prev_was_whitespace {
                     result.push(' ');
                     prev_was_whitespace = true;
@@ -114,7 +134,20 @@ pub fn normalize_whitespace(input: &str) -> String {
             }
 
             _ => {
+                if done {
+                    result.push(c);
+                    continue;
+                }
+
                 result.push(c);
+                if prev_was_whitespace {
+                    count += 1;
+                    if let Some(target) = limit
+                        && count >= target
+                    {
+                        done = true;
+                    }
+                }
                 prev_was_whitespace = false;
             }
         }

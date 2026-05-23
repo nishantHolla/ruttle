@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(name = "Terus")]
-#[command(version = "0.1.0")]
+#[command(version = "0.2.0")]
 #[command(about = "Templating engine for HTML written in rust")]
 #[command(long_about = None)]
 pub struct Args {
