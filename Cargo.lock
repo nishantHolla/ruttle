@@ -395,6 +395,7 @@ dependencies = [
  "pulldown-cmark",
  "regex",
  "serde",
+ "serde_json",
  "serde_yaml",
  "thiserror",
 ]

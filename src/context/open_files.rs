@@ -1,35 +1,13 @@
 use super::error::OpenFilesError;
+use super::files::{File, JsonFile, MarkdownFile};
 use crate::store::FileId;
 use std::collections::HashMap;
 use std::path::Path;
 
 use gray_matter::{Matter, engine::TOML, engine::YAML};
 use pulldown_cmark::{Parser, html};
-use serde_yaml::Value;
-
-struct MarkdownFile {
-    file_id: FileId,
-    frontmatter: Option<Value>,
-    content: String,
-}
-
-impl MarkdownFile {
-    pub fn resolve(&self, parts: &[&str]) -> Option<&str> {
-        let (first, rest) = parts.split_first()?;
-
-        let mut value = self.frontmatter.as_ref()?.get(*first)?;
-
-        for part in rest {
-            value = value.get(*part)?;
-        }
-
-        value.as_str()
-    }
-}
-
-enum File {
-    Markdown(MarkdownFile),
-}
+use serde_json::Value as JsonValue;
+use serde_yaml::Value as MdValue;
 
 pub struct OpenFiles {
     identifier_map: HashMap<String, FileId>,
@@ -64,27 +42,30 @@ impl OpenFiles {
         match file {
             File::Markdown(m) => {
                 if parts.len() == 1 && parts[0] == "content" {
-                    return Some(&m.content);
+                    return Some(&m.content());
                 } else {
                     return m.resolve(&parts);
                 }
             }
+            File::Json(j) => {
+                return j.reslove(&parts);
+            }
         }
     }
 
-    fn parse_frontmatter(&self, s: &str) -> Option<(Option<Value>, String)> {
+    fn parse_frontmatter(&self, s: &str) -> Option<(Option<MdValue>, String)> {
         if s.starts_with("---") {
             let mut matter: Matter<YAML> = Matter::new();
             matter.delimiter = "---".to_owned();
             matter.close_delimiter = Some("---".to_owned());
-            if let Ok(parsed) = matter.parse::<Value>(s) {
+            if let Ok(parsed) = matter.parse::<MdValue>(s) {
                 return Some((parsed.data, parsed.content));
             }
         } else if s.starts_with("+++") {
             let mut matter: Matter<TOML> = Matter::new();
             matter.delimiter = "+++".to_owned();
             matter.close_delimiter = Some("+++".to_owned());
-            if let Ok(parsed) = matter.parse::<Value>(s) {
+            if let Ok(parsed) = matter.parse::<MdValue>(s) {
                 return Some((parsed.data, parsed.content));
             }
         }
@@ -127,13 +108,20 @@ impl OpenFiles {
             let mut html_output = String::new();
             html::push_html(&mut html_output, parser);
 
-            let file = MarkdownFile {
-                file_id,
-                frontmatter,
-                content: html_output,
-            };
-
+            let file = MarkdownFile::new(file_id, frontmatter, html_output);
             self.file_map.insert(file_id, File::Markdown(file));
+        } else if path.as_ref().extension() == Some("json".as_ref()) {
+            let value: JsonValue = serde_json::from_str(&s).map_err(|e| {
+                let s = format!(
+                    "Failed to parse json file at {}\n{}",
+                    path.as_ref().display(),
+                    e.to_string()
+                );
+                OpenFilesError::FileOpenFailed(s)
+            })?;
+
+            let file = JsonFile::new(file_id, Some(value));
+            self.file_map.insert(file_id, File::Json(file));
         } else {
             let s = format!(
                 "Unknown file extension {} to open",
