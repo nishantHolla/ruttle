@@ -106,7 +106,13 @@ impl WithNode {
 
     pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
         ctx.hint_stack.push(self.hint);
-        ctx.call_stack.enter_new_scope();
+        ctx.call_stack
+            .get_mut_current_frame()
+            .ok_or_else(|| {
+                let s = format!("Failed to find current frame");
+                AstError::EvaluationFailed(s)
+            })?
+            .enter_new_scope();
 
         let path = ctx.file_store.get_by_id(self.file_id).ok_or_else(|| {
             let s = format!("Failed to find path for file id {:?}", self.file_id);
@@ -114,7 +120,12 @@ impl WithNode {
         })?;
 
         ctx.call_stack
-            .open_file(&self.identifier, path, self.file_id)
+            .get_mut_current_scope()
+            .ok_or_else(|| {
+                let s = format!("Failed to find current scope");
+                AstError::EvaluationFailed(s)
+            })?
+            .open(&self.identifier, path, self.file_id)
             .map_err(|e| {
                 let s = format!(
                     "Failed to evaluate WITH directive of {}\n{}",
@@ -135,7 +146,13 @@ impl WithNode {
         })?;
 
         ctx.node_store.put_back(self.root_node_id, root);
-        ctx.call_stack.exit_current_scope();
+        ctx.call_stack
+            .get_mut_current_frame()
+            .ok_or_else(|| {
+                let s = format!("Failed to find current frame");
+                AstError::EvaluationFailed(s)
+            })?
+            .exit_current_scope();
         ctx.hint_stack.pop();
         Ok(result)
     }

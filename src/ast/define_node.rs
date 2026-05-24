@@ -62,7 +62,13 @@ impl DefineNode {
     pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
         ctx.hint_stack.push(self.hint);
 
-        ctx.call_stack.set_definition(&self.key, self.value.clone());
+        ctx.call_stack
+            .get_mut_current_scope()
+            .ok_or_else(|| {
+                let s = format!("Failed to find current scope");
+                AstError::EvaluationFailed(s)
+            })?
+            .set(&self.key, self.value.clone());
 
         ctx.hint_stack.pop();
         Ok(String::new())

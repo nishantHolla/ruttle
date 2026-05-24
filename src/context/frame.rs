@@ -30,40 +30,56 @@ impl Frame {
         self.fingerprint
     }
 
-    pub fn set_definition(&mut self, key: &str, lit: Literal) {
+    pub fn get_current_scope(&self) -> Option<&Scope> {
         if self.scopes.len() == 0 {
-            return;
+            None
+        } else {
+            self.scopes.last()
         }
-
-        self.scopes.last_mut().unwrap().set(key, lit);
     }
 
-    pub fn get_definition(&self, key: &str) -> Option<&Literal> {
-        for scope in self.scopes.iter().rev() {
-            if let Some(s) = scope.get(key) {
-                return Some(s);
-            }
-        }
-
-        None
-    }
-
-    pub fn open_file(
-        &mut self,
-        identifier: &str,
-        path: impl AsRef<Path>,
-        file_id: FileId,
-    ) -> Result<(), ContextError> {
+    pub fn get_mut_current_scope(&mut self) -> Option<&mut Scope> {
         if self.scopes.len() == 0 {
-            let s = format!("No scope to open file in");
-            return Err(ContextError::NoScopeError(s));
+            None
+        } else {
+            self.scopes.last_mut()
         }
-
-        self.scopes
-            .last_mut()
-            .unwrap()
-            .open(identifier, path, file_id)
     }
+
+    // pub fn set_definition(&mut self, key: &str, lit: Literal) {
+    //     if self.scopes.len() == 0 {
+    //         return;
+    //     }
+    //
+    //     self.scopes.last_mut().unwrap().set(key, lit);
+    // }
+    //
+    // pub fn get_definition(&self, key: &str) -> Option<&Literal> {
+    //     for scope in self.scopes.iter().rev() {
+    //         if let Some(s) = scope.get(key) {
+    //             return Some(s);
+    //         }
+    //     }
+    //
+    //     None
+    // }
+    //
+    // pub fn open_file(
+    //     &mut self,
+    //     identifier: &str,
+    //     path: impl AsRef<Path>,
+    //     file_id: FileId,
+    // ) -> Result<(), ContextError> {
+    //     if self.scopes.len() == 0 {
+    //         let s = format!("No scope to open file in");
+    //         return Err(ContextError::NoScopeError(s));
+    //     }
+    //
+    //     self.scopes
+    //         .last_mut()
+    //         .unwrap()
+    //         .open(identifier, path, file_id)
+    // }
 
     pub fn enter_new_scope(&mut self) {
         self.scopes.push(Scope::new());
