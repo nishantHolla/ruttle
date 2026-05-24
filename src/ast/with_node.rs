@@ -108,6 +108,22 @@ impl WithNode {
         ctx.hint_stack.push(self.hint);
         ctx.call_stack.enter_new_scope();
 
+        let path = ctx.file_store.get_by_id(self.file_id).ok_or_else(|| {
+            let s = format!("Failed to find path for file id {:?}", self.file_id);
+            AstError::EvaluationFailed(s)
+        })?;
+
+        ctx.call_stack
+            .open_file(&self.identifier, path, self.file_id)
+            .map_err(|e| {
+                let s = format!(
+                    "Failed to evaluate WITH directive of {}\n{}",
+                    path.display(),
+                    e.to_string()
+                );
+                AstError::EvaluationFailed(s)
+            })?;
+
         let root = ctx.node_store.take(self.root_node_id).ok_or_else(|| {
             let s = format!("Failed to find node with id {:?}", self.root_node_id);
             AstError::EvaluationFailed(s)

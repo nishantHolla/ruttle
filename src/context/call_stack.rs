@@ -3,6 +3,7 @@ use super::frame::Frame;
 use super::scope::ScopeDef;
 use crate::ast::Literal;
 use crate::store::FileId;
+use std::path::Path;
 
 pub struct CallStack {
     stack: Vec<Frame>,
@@ -49,6 +50,23 @@ impl CallStack {
         }
 
         self.stack.last().unwrap().get_definition(key)
+    }
+
+    pub fn open_file(
+        &mut self,
+        identifier: &str,
+        path: impl AsRef<Path>,
+        file_id: FileId,
+    ) -> Result<(), ContextError> {
+        if self.stack.len() == 0 {
+            let s = format!("No frame to open current file in");
+            return Err(ContextError::NoFrameError(s));
+        }
+
+        self.stack
+            .last_mut()
+            .unwrap()
+            .open_file(identifier, path, file_id)
     }
 
     pub fn enter_new_scope(&mut self) {

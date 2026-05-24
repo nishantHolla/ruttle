@@ -5,6 +5,7 @@ pub mod error;
 mod frame;
 mod hint_stack;
 mod in_stack;
+mod open_files;
 mod out_map;
 mod scope;
 

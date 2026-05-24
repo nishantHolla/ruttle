@@ -1,6 +1,8 @@
+use super::error::ContextError;
 use super::scope::{Fingerprint, Scope, ScopeDef};
 use crate::ast::Literal;
 use crate::store::FileId;
+use std::path::Path;
 
 pub struct Frame {
     scopes: Vec<Scope>,
@@ -44,6 +46,23 @@ impl Frame {
         }
 
         None
+    }
+
+    pub fn open_file(
+        &mut self,
+        identifier: &str,
+        path: impl AsRef<Path>,
+        file_id: FileId,
+    ) -> Result<(), ContextError> {
+        if self.scopes.len() == 0 {
+            let s = format!("No scope to open file in");
+            return Err(ContextError::NoScopeError(s));
+        }
+
+        self.scopes
+            .last_mut()
+            .unwrap()
+            .open(identifier, path, file_id)
     }
 
     pub fn enter_new_scope(&mut self) {
