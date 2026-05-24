@@ -55,6 +55,11 @@ fn parse(
     while cursor <= end_pos
         && let Some(mat) = DIRECTIVE_RE.find_at(input, cursor)
     {
+        // Check if end is reached
+        if mat.start() > end_pos {
+            break;
+        }
+
         // Emit text before directive
         if mat.start() > cursor {
             let text = &input[cursor..mat.start()];
