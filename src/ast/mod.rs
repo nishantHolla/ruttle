@@ -1,6 +1,7 @@
 mod ast;
 mod define_node;
 pub mod error;
+mod for_node;
 mod hint;
 mod include_node;
 mod interpolate_node;

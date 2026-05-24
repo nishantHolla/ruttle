@@ -160,8 +160,11 @@ impl WithNode {
 
     pub fn to_string(&self) -> String {
         format!(
-            "WithNode({}, {:?}, {:?})",
-            self.identifier, self.file_id, self.root_node_id
+            "WithNode({}, {:?}, {:?}, {})",
+            self.identifier,
+            self.file_id,
+            self.root_node_id,
+            self.hint.to_string()
         )
     }
 

@@ -1,5 +1,6 @@
 use super::define_node::DefineNode;
 use super::error::AstError;
+use super::for_node::ForNode;
 use super::include_node::IncludeNode;
 use super::interpolate_node::InterpolateNode;
 use super::root_node::RootNode;
@@ -15,6 +16,7 @@ pub enum Node {
     Interpolate(InterpolateNode),
     Include(IncludeNode),
     With(WithNode),
+    For(ForNode),
 }
 
 impl Node {
@@ -26,6 +28,7 @@ impl Node {
             Node::Interpolate(n) => n.to_string(),
             Node::Include(n) => n.to_string(),
             Node::With(n) => n.to_string(),
+            Node::For(n) => n.to_string(),
         }
     }
 
@@ -37,6 +40,7 @@ impl Node {
             Node::Interpolate(n) => n.evaluate(ctx),
             Node::Include(n) => n.evaluate(ctx),
             Node::With(n) => n.evaluate(ctx),
+            Node::For(n) => n.evaluate(ctx),
         }
     }
 
@@ -48,6 +52,7 @@ impl Node {
             Node::Interpolate(n) => n.debug(indent),
             Node::Include(n) => n.debug(indent),
             Node::With(n) => n.debug(indent, ns),
+            Node::For(n) => n.debug(indent, ns),
         }
     }
 }
