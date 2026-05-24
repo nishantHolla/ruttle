@@ -33,21 +33,18 @@ impl InterpolateNode {
     pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
         ctx.hint_stack.push(self.hint);
 
-        let definition = ctx
-            .call_stack
-            .get_current_scope()
-            .ok_or_else(|| {
-                let s = format!("Failed to find current scope");
-                AstError::EvaluationFailed(s)
-            })?
-            .get(&self.key)
-            .ok_or_else(|| {
-                let s = format!("Variable '{}' is not definied", self.key);
-                AstError::EvaluationFailed(s)
-            })?;
+        let current_scope = ctx.call_stack.get_current_scope().ok_or_else(|| {
+            let s = format!("Failed to find current scope");
+            AstError::EvaluationFailed(s)
+        })?;
+
+        let result = current_scope.resolve(&self.key).ok_or_else(|| {
+            let s = format!("Failed to resolve symbol '{}'", self.key);
+            AstError::EvaluationFailed(s)
+        })?;
 
         ctx.hint_stack.pop();
-        Ok(definition.to_string())
+        Ok(result)
     }
 
     pub fn to_string(&self) -> String {

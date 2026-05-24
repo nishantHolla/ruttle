@@ -13,6 +13,20 @@ struct MarkdownFile {
     content: String,
 }
 
+impl MarkdownFile {
+    pub fn resolve(&self, parts: &[&str]) -> Option<&str> {
+        let (first, rest) = parts.split_first()?;
+
+        let mut value = self.frontmatter.as_ref()?.get(*first)?;
+
+        for part in rest {
+            value = value.get(*part)?;
+        }
+
+        value.as_str()
+    }
+}
+
 enum File {
     Markdown(MarkdownFile),
 }
@@ -27,6 +41,34 @@ impl OpenFiles {
         Self {
             identifier_map: HashMap::new(),
             file_map: HashMap::new(),
+        }
+    }
+
+    pub fn get(&self, key: &str) -> Option<&str> {
+        let mut parts = key.split('.');
+        let identifier = parts.next().unwrap();
+
+        if !self.identifier_map.contains_key(identifier) {
+            return None;
+        }
+
+        let file_id = self.identifier_map.get(identifier).unwrap();
+        let file = self.file_map.get(file_id).unwrap();
+
+        let parts: Vec<&str> = parts.collect();
+
+        if parts.len() == 0 {
+            return None;
+        }
+
+        match file {
+            File::Markdown(m) => {
+                if parts.len() == 1 && parts[0] == "content" {
+                    return Some(&m.content);
+                } else {
+                    return m.resolve(&parts);
+                }
+            }
         }
     }
 

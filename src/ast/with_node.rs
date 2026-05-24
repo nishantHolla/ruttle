@@ -153,6 +153,7 @@ impl WithNode {
                 AstError::EvaluationFailed(s)
             })?
             .exit_current_scope();
+
         ctx.hint_stack.pop();
         Ok(result)
     }

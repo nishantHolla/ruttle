@@ -40,6 +40,14 @@ impl Scope {
         self.definitions.get(key)
     }
 
+    pub fn resolve(&self, key: &str) -> Option<String> {
+        if key.contains('.') {
+            self.open_files.get(key).map(|s| s.to_string())
+        } else {
+            self.get(key).map(|f| f.to_string())
+        }
+    }
+
     pub fn open(
         &mut self,
         identifier: &str,
