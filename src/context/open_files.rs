@@ -3,7 +3,7 @@ use crate::store::FileId;
 use std::collections::HashMap;
 use std::path::Path;
 
-use gray_matter::{Matter, engine::YAML};
+use gray_matter::{Matter, engine::TOML, engine::YAML};
 use pulldown_cmark::{Parser, html};
 use serde_yaml::Value;
 
@@ -72,6 +72,26 @@ impl OpenFiles {
         }
     }
 
+    fn parse_frontmatter(&self, s: &str) -> Option<(Option<Value>, String)> {
+        if s.starts_with("---") {
+            let mut matter: Matter<YAML> = Matter::new();
+            matter.delimiter = "---".to_owned();
+            matter.close_delimiter = Some("---".to_owned());
+            if let Ok(parsed) = matter.parse::<Value>(s) {
+                return Some((parsed.data, parsed.content));
+            }
+        } else if s.starts_with("+++") {
+            let mut matter: Matter<TOML> = Matter::new();
+            matter.delimiter = "+++".to_owned();
+            matter.close_delimiter = Some("+++".to_owned());
+            if let Ok(parsed) = matter.parse::<Value>(s) {
+                return Some((parsed.data, parsed.content));
+            }
+        }
+
+        None
+    }
+
     pub fn open(
         &mut self,
         identifier: &str,
@@ -95,17 +115,15 @@ impl OpenFiles {
         })?;
 
         if path.as_ref().extension() == Some("md".as_ref()) {
-            let matter = Matter::<YAML>::new();
-            let parsed = matter.parse::<Value>(&s).map_err(|e| {
+            let (frontmatter, content) = self.parse_frontmatter(&s).ok_or_else(|| {
                 let s = format!(
-                    "Failed to parse file {} for front matter\n{}",
-                    path.as_ref().display(),
-                    e.to_string()
+                    "Failed to parse front matter in {}",
+                    path.as_ref().display()
                 );
                 OpenFilesError::FileOpenFailed(s)
             })?;
-            let frontmatter = parsed.data;
-            let parser = Parser::new(&parsed.content);
+
+            let parser = Parser::new(&content);
             let mut html_output = String::new();
             html::push_html(&mut html_output, parser);
 

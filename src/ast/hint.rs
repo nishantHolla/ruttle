@@ -46,7 +46,19 @@ impl Hint {
             return format!("{}:{}:{}", path.display(), row, col);
         };
 
-        let line = util::string::normalize_whitespace(&line, None);
+        let mut line = util::string::normalize_whitespace(&line, None);
+        if line.chars().count() > 40 {
+            let start: String = line.chars().take(20).collect();
+            let end: String = line
+                .chars()
+                .rev()
+                .take(20)
+                .collect::<String>()
+                .chars()
+                .rev()
+                .collect();
+            line = format!("{}          ...          {}", start, end);
+        }
         let indented_line = util::string::indent_with_pipes(&line);
         return format!("{}:{}:{}\n{}", path.display(), row, col, indented_line);
     }

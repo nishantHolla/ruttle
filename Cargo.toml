@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "4.6.1", features = ["derive"] }
-gray_matter = "0.3.2"
+gray_matter = { version = "0.3.2", features = ["json", "toml", "yaml"] }
 pulldown-cmark = "0.13.4"
 regex = "1.12.3"
 serde = { version = "1.0.228", features = ["derive"] }
