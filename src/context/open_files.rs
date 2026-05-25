@@ -22,7 +22,7 @@ impl OpenFiles {
         }
     }
 
-    pub fn get(&self, key: &str) -> Option<&str> {
+    pub fn get(&self, key: &str) -> Option<String> {
         let mut parts = key.split('.');
         let identifier = parts.next().unwrap();
 
@@ -42,7 +42,7 @@ impl OpenFiles {
         match file {
             File::Markdown(m) => {
                 if parts.len() == 1 && parts[0] == "content" {
-                    return Some(&m.content());
+                    return Some(m.content().to_string());
                 } else {
                     return m.resolve(&parts);
                 }

@@ -22,7 +22,7 @@ impl MarkdownFile {
         }
     }
 
-    pub fn resolve(&self, parts: &[&str]) -> Option<&str> {
+    pub fn resolve(&self, parts: &[&str]) -> Option<String> {
         let (first, rest) = parts.split_first()?;
 
         let mut value = self.frontmatter.as_ref()?.get(*first)?;
@@ -31,7 +31,11 @@ impl MarkdownFile {
             value = value.get(*part)?;
         }
 
-        value.as_str()
+        match value {
+            YamlValue::String(s) => Some(s.clone()),
+            YamlValue::Number(n) => Some(n.to_string()),
+            _ => None,
+        }
     }
 
     pub fn file_id(&self) -> FileId {
@@ -65,15 +69,28 @@ impl JsonFile {
         &self.value
     }
 
-    pub fn reslove(&self, parts: &[&str]) -> Option<&str> {
+    pub fn reslove(&self, parts: &[&str]) -> Option<String> {
         let (first, rest) = parts.split_first()?;
 
         let mut value = self.value.as_ref()?.get(*first)?;
 
         for part in rest {
-            value = value.get(*part)?;
+            if let Ok(num) = part.parse::<usize>() {
+                match value {
+                    JsonValue::Array(a) => {
+                        value = a.get(num)?;
+                    }
+                    _ => return None,
+                }
+            } else {
+                value = value.get(*part)?;
+            }
         }
 
-        value.as_str()
+        match value {
+            JsonValue::String(s) => Some(s.clone()),
+            JsonValue::Number(n) => Some(n.to_string()),
+            _ => None,
+        }
     }
 }
