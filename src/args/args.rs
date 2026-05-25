@@ -7,7 +7,7 @@ use std::path::PathBuf;
 #[derive(Parser, Debug)]
 #[command(name = "Terus")]
 #[command(version = "0.2.0")]
-#[command(about = "Templating engine for HTML written in rust")]
+#[command(about = "Templating engine for HTML, CSS and JS")]
 #[command(long_about = None)]
 pub struct Args {
     #[arg(short, long)]

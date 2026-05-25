@@ -38,8 +38,13 @@ impl InterpolateNode {
             AstError::EvaluationFailed(s)
         })?;
 
-        let result = current_scope.resolve(&self.key).ok_or_else(|| {
+        let lit = current_scope.resolve_to_lit(&self.key).ok_or_else(|| {
             let s = format!("Failed to resolve symbol '{}'", self.key);
+            AstError::EvaluationFailed(s)
+        })?;
+
+        let result = lit.evaluate(ctx).ok_or_else(|| {
+            let s = format!("Failed to evaluate literal {}", lit.to_string());
             AstError::EvaluationFailed(s)
         })?;
 

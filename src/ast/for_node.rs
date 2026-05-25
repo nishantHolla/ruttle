@@ -3,16 +3,11 @@ use super::error::AstError;
 use super::hint::Hint;
 use super::literal::Literal;
 use super::node::Node;
-use crate::config::{DIRECTIVE_END, FOR_DIRECTIVE_START};
+use crate::config::{self, DIRECTIVE_END, FOR_DIRECTIVE_START};
 use crate::context::Context;
 use crate::store::{FileId, NodeId, NodeStore};
-use regex::Regex;
 use serde_json::Value;
 use std::path::PathBuf;
-
-const FOR_DIRECTIVE_REGEX: &str = r"(?<l>\w+)[\s\n]*,[\s\n]*(?<r>\w+)[\s\n]+(?<keyword>\w+)[\s\n]+(?:(?<range>[+\-]?\d+\.\.[+\-]?\d+\.\.[+\-]?\d+)|(?<path>\S+))[\s\n]+(?<body>.*)$";
-static FOR_DIRECTIVE_RE: std::sync::LazyLock<Regex> =
-    std::sync::LazyLock::new(|| Regex::new(FOR_DIRECTIVE_REGEX).unwrap());
 
 enum ForType {
     Iteration(ForIteration),
@@ -87,7 +82,7 @@ impl ForNode {
             .trim_end_matches(DIRECTIVE_END)
             .trim();
 
-        if let Some(mat) = FOR_DIRECTIVE_RE.captures(inner) {
+        if let Some(mat) = config::FOR_DIRECTIVE_RE.captures(inner) {
             let l_identifier = mat.name("l").map(|m| m.as_str()).unwrap_or("");
             let r_identifier = mat.name("r").map(|m| m.as_str()).unwrap_or("");
             let keyword = mat.name("keyword").map(|m| m.as_str()).unwrap_or("");

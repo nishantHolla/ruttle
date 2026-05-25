@@ -9,4 +9,4 @@ pub mod util;
 
 pub use args::Args;
 pub use context::Context;
-pub use error::TerusError;
+pub use error::AppError;

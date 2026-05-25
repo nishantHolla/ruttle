@@ -71,14 +71,6 @@ impl MarkdownFile {
         }
     }
 
-    pub fn file_id(&self) -> FileId {
-        self.file_id
-    }
-
-    pub fn frontmatter(&self) -> &Option<Value> {
-        &self.frontmatter
-    }
-
     pub fn content(&self) -> &str {
         &self.content
     }

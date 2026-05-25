@@ -24,7 +24,7 @@ impl IncludeNode {
             .trim_end_matches(DIRECTIVE_END)
             .trim();
 
-        let mut parts = inner.split_whitespace();
+        let mut parts = util::string::split_quoted(inner);
 
         let include_path = parts.next().ok_or_else(|| {
             let s = format!("Failed to find 'path' for INCLUDE directive");
@@ -101,8 +101,18 @@ impl IncludeNode {
     pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
         ctx.hint_stack.push(self.hint);
 
+        let mut props: BTreeMap<String, Literal> = BTreeMap::new();
+
+        for (k, v) in &self.props {
+            let value = v.evaluate(ctx).ok_or_else(|| {
+                let s = format!("Failed to evaluate literal {}", v.to_string());
+                AstError::EvaluationFailed(s)
+            })?;
+            props.insert(k.clone(), Literal::String(value));
+        }
+
         ctx.call_stack
-            .push(self.file_id, Some(self.props.clone()))
+            .push(self.file_id, Some(props))
             .map_err(|e| {
                 let path = ctx.file_store.get_by_id(self.file_id).unwrap();
                 let s = format!(

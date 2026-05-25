@@ -41,6 +41,14 @@ impl Scope {
         self.definitions.get(key)
     }
 
+    pub fn resolve_to_lit(&self, key: &str) -> Option<Literal> {
+        if key.contains('.') {
+            self.open_files.get(key).map(|s| Literal::String(s))
+        } else {
+            self.get(key).cloned()
+        }
+    }
+
     pub fn resolve(&self, key: &str) -> Option<String> {
         if key.contains('.') {
             self.open_files.get(key).map(|s| s.to_string())

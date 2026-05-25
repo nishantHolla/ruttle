@@ -4,7 +4,6 @@ use crate::config;
 use crate::context::Context;
 use crate::store::{FileId, NodeId};
 use crate::util;
-use regex::Regex;
 
 use super::define_node::DefineNode;
 use super::for_node::ForNode;
@@ -14,9 +13,6 @@ use super::node::Node;
 use super::root_node::RootNode;
 use super::text_node::TextNode;
 use super::with_node::WithNode;
-
-static DIRECTIVE_RE: std::sync::LazyLock<Regex> =
-    std::sync::LazyLock::new(|| Regex::new(config::DIRECTIVE_REGEX).unwrap());
 
 fn parse_directive(s: &str, hint: Hint, ctx: &mut Context) -> Result<Node, AstError> {
     ctx.hint_stack.push(hint);
@@ -56,7 +52,7 @@ fn parse(
     let end_pos = end_pos.unwrap_or(input.len() - 1);
 
     while cursor <= end_pos
-        && let Some(mat) = DIRECTIVE_RE.find_at(input, cursor)
+        && let Some(mat) = config::DIRECTIVE_RE.find_at(input, cursor)
     {
         // Check if end is reached
         if mat.start() > end_pos {

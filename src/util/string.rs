@@ -79,6 +79,55 @@ pub fn get_line_end_index(string: &str, start: usize) -> Option<usize> {
     string.get(start..)?.find('\n').map(|i| start + i)
 }
 
+pub fn split_quoted(input: &str) -> impl Iterator<Item = String> + '_ {
+    struct SplitQuoted<'a> {
+        input: &'a str,
+        pos: usize,
+    }
+
+    impl<'a> Iterator for SplitQuoted<'a> {
+        type Item = String;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            let bytes = self.input.as_bytes();
+            let len = bytes.len();
+
+            // Skip leading whitespace
+            while self.pos < len && bytes[self.pos].is_ascii_whitespace() {
+                self.pos += 1;
+            }
+
+            if self.pos >= len {
+                return None;
+            }
+
+            let mut out = String::new();
+            let mut in_quotes = false;
+
+            while self.pos < len {
+                let c = bytes[self.pos] as char;
+
+                match c {
+                    '"' => {
+                        in_quotes = !in_quotes;
+                        out.push(c)
+                    }
+                    c if c.is_whitespace() && !in_quotes => {
+                        break;
+                    }
+                    _ => out.push(c),
+                }
+
+                self.pos += 1;
+            }
+
+            Some(out)
+        }
+    }
+
+    SplitQuoted { input, pos: 0 }
+}
+
 pub fn indent_with_pipes(string: &str) -> String {
     let indent_str = String::from("| ");
     let mut result = indent_str.clone();

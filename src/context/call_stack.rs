@@ -1,9 +1,7 @@
 use super::error::ContextError;
 use super::frame::Frame;
 use super::scope::{Scope, ScopeDef};
-use crate::ast::Literal;
 use crate::store::FileId;
-use std::path::Path;
 
 pub struct CallStack {
     stack: Vec<Frame>,

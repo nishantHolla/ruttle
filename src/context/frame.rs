@@ -1,8 +1,5 @@
-use super::error::ContextError;
 use super::scope::{Fingerprint, Scope, ScopeDef};
-use crate::ast::Literal;
 use crate::store::FileId;
-use std::path::Path;
 
 pub struct Frame {
     scopes: Vec<Scope>,
