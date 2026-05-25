@@ -1,17 +1,23 @@
 use super::error::OpenFilesError;
-use super::files::{File, JsonFile, MarkdownFile};
+use crate::handler::{JsonFile, MarkdownFile};
 use crate::store::FileId;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
 
-use gray_matter::{Matter, engine::TOML, engine::YAML};
-use pulldown_cmark::{Parser, html};
-use serde_json::Value as JsonValue;
-use serde_yaml::Value as MdValue;
+enum FileType {
+    Concrete(FileId),
+    Pseudo(Value),
+}
+
+enum FileHandler {
+    Markdown(MarkdownFile),
+    Json(JsonFile),
+}
 
 pub struct OpenFiles {
-    identifier_map: HashMap<String, FileId>,
-    file_map: HashMap<FileId, File>,
+    identifier_map: HashMap<String, FileType>,
+    file_map: HashMap<FileId, FileHandler>,
 }
 
 impl OpenFiles {
@@ -25,52 +31,41 @@ impl OpenFiles {
     pub fn get(&self, key: &str) -> Option<String> {
         let mut parts = key.split('.');
         let identifier = parts.next().unwrap();
+        let parts: Vec<&str> = parts.collect();
+        if parts.len() == 0 {
+            return None;
+        }
 
         if !self.identifier_map.contains_key(identifier) {
             return None;
         }
 
-        let file_id = self.identifier_map.get(identifier).unwrap();
+        let file_type = self.identifier_map.get(identifier).unwrap();
+        let file_id = match file_type {
+            FileType::Concrete(c) => c,
+            FileType::Pseudo(v) => return JsonFile::resolve(v, &parts),
+        };
+
         let file = self.file_map.get(file_id).unwrap();
-
-        let parts: Vec<&str> = parts.collect();
-
-        if parts.len() == 0 {
-            return None;
-        }
-
         match file {
-            File::Markdown(m) => {
+            FileHandler::Markdown(m) => {
                 if parts.len() == 1 && parts[0] == "content" {
                     return Some(m.content().to_string());
                 } else {
                     return m.resolve(&parts);
                 }
             }
-            File::Json(j) => {
+            FileHandler::Json(j) => {
                 return j.reslove(&parts);
             }
         }
     }
 
-    fn parse_frontmatter(&self, s: &str) -> Option<(Option<MdValue>, String)> {
-        if s.starts_with("---") {
-            let mut matter: Matter<YAML> = Matter::new();
-            matter.delimiter = "---".to_owned();
-            matter.close_delimiter = Some("---".to_owned());
-            if let Ok(parsed) = matter.parse::<MdValue>(s) {
-                return Some((parsed.data, parsed.content));
-            }
-        } else if s.starts_with("+++") {
-            let mut matter: Matter<TOML> = Matter::new();
-            matter.delimiter = "+++".to_owned();
-            matter.close_delimiter = Some("+++".to_owned());
-            if let Ok(parsed) = matter.parse::<MdValue>(s) {
-                return Some((parsed.data, parsed.content));
-            }
-        }
+    pub fn open_pseudo(&mut self, identifier: &str, v: &Value) -> Result<(), OpenFilesError> {
+        self.identifier_map
+            .insert(identifier.to_string(), FileType::Pseudo(v.clone()));
 
-        None
+        Ok(())
     }
 
     pub fn open(
@@ -84,44 +79,31 @@ impl OpenFiles {
             return Err(OpenFilesError::FileOpenFailed(s));
         }
 
-        self.identifier_map.insert(identifier.to_string(), file_id);
-
-        let s = std::fs::read_to_string(path.as_ref()).map_err(|e| {
-            let s = format!(
-                "Failed to read file {}\n{}",
-                path.as_ref().display(),
-                e.to_string()
-            );
-            OpenFilesError::FileOpenFailed(s)
-        })?;
+        self.identifier_map
+            .insert(identifier.to_string(), FileType::Concrete(file_id));
 
         if path.as_ref().extension() == Some("md".as_ref()) {
-            let (frontmatter, content) = self.parse_frontmatter(&s).ok_or_else(|| {
+            let file = MarkdownFile::new(file_id, &path).map_err(|e| {
                 let s = format!(
-                    "Failed to parse front matter in {}",
-                    path.as_ref().display()
-                );
-                OpenFilesError::FileOpenFailed(s)
-            })?;
-
-            let parser = Parser::new(&content);
-            let mut html_output = String::new();
-            html::push_html(&mut html_output, parser);
-
-            let file = MarkdownFile::new(file_id, frontmatter, html_output);
-            self.file_map.insert(file_id, File::Markdown(file));
-        } else if path.as_ref().extension() == Some("json".as_ref()) {
-            let value: JsonValue = serde_json::from_str(&s).map_err(|e| {
-                let s = format!(
-                    "Failed to parse json file at {}\n{}",
+                    "Failed to open markdown file {}\n{}",
                     path.as_ref().display(),
-                    e.to_string()
+                    e
                 );
                 OpenFilesError::FileOpenFailed(s)
             })?;
 
-            let file = JsonFile::new(file_id, Some(value));
-            self.file_map.insert(file_id, File::Json(file));
+            self.file_map.insert(file_id, FileHandler::Markdown(file));
+        } else if path.as_ref().extension() == Some("json".as_ref()) {
+            let file = JsonFile::new(file_id, &path).map_err(|e| {
+                let s = format!(
+                    "Failed to open json file {}\n{}",
+                    path.as_ref().display(),
+                    e
+                );
+                OpenFilesError::FileOpenFailed(s)
+            })?;
+
+            self.file_map.insert(file_id, FileHandler::Json(file));
         } else {
             let s = format!(
                 "Unknown file extension {} to open",

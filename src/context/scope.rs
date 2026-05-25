@@ -2,6 +2,7 @@ use super::error::ContextError;
 use super::open_files::OpenFiles;
 use crate::ast::Literal;
 use crate::store::FileId;
+use serde_json::Value;
 use std::collections::BTreeMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -46,6 +47,13 @@ impl Scope {
         } else {
             self.get(key).map(|f| f.to_string())
         }
+    }
+
+    pub fn open_pseudo(&mut self, identifier: &str, value: &Value) -> Result<(), ContextError> {
+        self.open_files.open_pseudo(identifier, value).map_err(|e| {
+            let s = format!("Failed to open pseudo file\n{}", e.to_string());
+            ContextError::ScopeError(s)
+        })
     }
 
     pub fn open(

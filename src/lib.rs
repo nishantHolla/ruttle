@@ -3,6 +3,7 @@ mod ast;
 mod config;
 mod context;
 mod error;
+mod handler;
 mod store;
 pub mod util;
 

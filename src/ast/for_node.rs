@@ -1,14 +1,16 @@
 use super::ast;
 use super::error::AstError;
 use super::hint::Hint;
+use super::literal::Literal;
 use super::node::Node;
 use crate::config::{DIRECTIVE_END, FOR_DIRECTIVE_START};
 use crate::context::Context;
 use crate::store::{FileId, NodeId, NodeStore};
 use regex::Regex;
+use serde_json::Value;
 use std::path::PathBuf;
 
-const FOR_DIRECTIVE_REGEX: &str = r"(?<l>\w+)[\s\n]*,[\s\n]*(?<r>\w+)[\s\n]+(?<keyword>\w+)[\s\n]+(?:(?<range>\d+\.\.\d+\.\.\d+)|(?<path>\S+))[\s\n]+(?<body>.*)$";
+const FOR_DIRECTIVE_REGEX: &str = r"(?<l>\w+)[\s\n]*,[\s\n]*(?<r>\w+)[\s\n]+(?<keyword>\w+)[\s\n]+(?:(?<range>[+\-]?\d+\.\.[+\-]?\d+\.\.[+\-]?\d+)|(?<path>\S+))[\s\n]+(?<body>.*)$";
 static FOR_DIRECTIVE_RE: std::sync::LazyLock<Regex> =
     std::sync::LazyLock::new(|| Regex::new(FOR_DIRECTIVE_REGEX).unwrap());
 
@@ -20,8 +22,8 @@ enum ForType {
 impl ForType {
     pub fn to_string(&self) -> String {
         match self {
-            ForType::Iteration(_) => String::from("Iteration"),
-            ForType::Json(_) => String::from("Json"),
+            ForType::Iteration(i) => format!("Iteration({}, {}, {})", i.start(), i.end(), i.step()),
+            ForType::Json(j) => format!("Json({:?})", j.file_id()),
         }
     }
 }
@@ -32,8 +34,28 @@ pub struct ForIteration {
     step: i64,
 }
 
+impl ForIteration {
+    pub fn start(&self) -> i64 {
+        self.start
+    }
+
+    pub fn end(&self) -> i64 {
+        self.end
+    }
+
+    pub fn step(&self) -> i64 {
+        self.step
+    }
+}
+
 pub struct ForJson {
     file_id: FileId,
+}
+
+impl ForJson {
+    pub fn file_id(&self) -> FileId {
+        self.file_id
+    }
 }
 
 pub struct ForNode {
@@ -45,6 +67,18 @@ pub struct ForNode {
 }
 
 impl ForNode {
+    pub fn l_identifier(&self) -> &str {
+        &self.l_identifier
+    }
+
+    pub fn r_identifier(&self) -> &str {
+        &self.r_identifier
+    }
+
+    pub fn root_node_id(&self) -> NodeId {
+        self.root_node_id
+    }
+
     pub fn parse(s: &str, hint: Hint, ctx: &mut Context) -> Result<Node, AstError> {
         let initial_s = s.to_string();
 
@@ -179,8 +213,260 @@ impl ForNode {
         }
     }
 
+    fn evaluate_iteration(
+        for_node: &ForNode,
+        node: &ForIteration,
+        root: &Node,
+        ctx: &mut Context,
+    ) -> Result<String, AstError> {
+        if (node.start() < node.end() && node.step() < 0)
+            || (node.start() > node.end() && node.step() > 0)
+            || node.step == 0
+        {
+            let s = format!(
+                "Infinite loop detected: start value of {} will never meet end value of {} with step size of {}",
+                node.start(),
+                node.end(),
+                node.step()
+            );
+            return Err(AstError::EvaluationFailed(s));
+        }
+
+        let mut l_counter = 0;
+        let mut r_counter = node.start();
+        let mut result = String::new();
+
+        while (node.step() > 0 && r_counter < node.end())
+            || (node.step < 0 && r_counter > node.end())
+        {
+            ctx.call_stack
+                .get_mut_current_scope()
+                .ok_or_else(|| {
+                    let s = format!("Failed to find current scope");
+                    AstError::EvaluationFailed(s)
+                })?
+                .set(for_node.l_identifier(), Literal::Integer(l_counter));
+
+            ctx.call_stack
+                .get_mut_current_scope()
+                .ok_or_else(|| {
+                    let s = format!("Failed to find current scope");
+                    AstError::EvaluationFailed(s)
+                })?
+                .set(for_node.r_identifier(), Literal::Integer(r_counter));
+
+            let iteration_result = root.evaluate(ctx).map_err(|e| {
+                let s = format!("Failed to evaluate FOR directive\n{}", e.to_string());
+                AstError::EvaluationFailed(s)
+            })?;
+            result.push_str(&iteration_result);
+
+            r_counter += node.step();
+            l_counter += 1;
+        }
+
+        Ok(result)
+    }
+
+    fn evaluate_json(
+        for_node: &ForNode,
+        node: &ForJson,
+        root: &Node,
+        ctx: &mut Context,
+    ) -> Result<String, AstError> {
+        let path = ctx.file_store.get_by_id(node.file_id()).ok_or_else(|| {
+            let s = format!("Failed to find path for file id {:?}", node.file_id());
+            AstError::EvaluationFailed(s)
+        })?;
+
+        let content = std::fs::read_to_string(path).map_err(|e| {
+            let s = format!(
+                "Failed to read json file {}\n{}",
+                path.display(),
+                e.to_string()
+            );
+            AstError::EvaluationFailed(s)
+        })?;
+
+        let json: Value = serde_json::from_str(&content).map_err(|e| {
+            let s = format!(
+                "Failed to parse json at path {}\n{}",
+                path.display(),
+                e.to_string()
+            );
+            AstError::EvaluationFailed(s)
+        })?;
+
+        let mut result = String::new();
+
+        match &json {
+            Value::Array(arr) => {
+                for (i, j) in arr.iter().enumerate() {
+                    ctx.call_stack
+                        .get_mut_current_scope()
+                        .ok_or_else(|| {
+                            let s = format!("Failed to find current scope");
+                            AstError::EvaluationFailed(s)
+                        })?
+                        .set(
+                            for_node.l_identifier(),
+                            Literal::Integer(i64::try_from(i).unwrap()),
+                        );
+
+                    match j {
+                        Value::String(value) => {
+                            ctx.call_stack
+                                .get_mut_current_scope()
+                                .ok_or_else(|| {
+                                    let s = format!("Failed to find current scope");
+                                    AstError::EvaluationFailed(s)
+                                })?
+                                .set(for_node.r_identifier(), Literal::String(value.clone()));
+                        }
+
+                        Value::Number(value) => {
+                            ctx.call_stack
+                                .get_mut_current_scope()
+                                .ok_or_else(|| {
+                                    let s = format!("Failed to find current scope");
+                                    AstError::EvaluationFailed(s)
+                                })?
+                                .set(for_node.r_identifier(), Literal::String(value.to_string()));
+                        }
+
+                        Value::Bool(b) => {
+                            ctx.call_stack
+                                .get_mut_current_scope()
+                                .ok_or_else(|| {
+                                    let s = format!("Failed to find current scope");
+                                    AstError::EvaluationFailed(s)
+                                })?
+                                .set(for_node.r_identifier(), Literal::String(b.to_string()));
+                        }
+
+                        Value::Object(_) => {
+                            ctx.call_stack
+                                .get_mut_current_scope()
+                                .ok_or_else(|| {
+                                    let s = format!("Failed to find current scope");
+                                    AstError::EvaluationFailed(s)
+                                })?
+                                .open_pseudo(for_node.r_identifier(), j)
+                                .map_err(|e| AstError::EvaluationFailed(e.to_string()))?;
+                        }
+
+                        _ => {
+                            let s = format!("Unsupported json format");
+                            return Err(AstError::EvaluationFailed(s));
+                        }
+                    }
+
+                    let iteration_result = root.evaluate(ctx).map_err(|e| {
+                        let s = format!("Failed to evaluate FOR directive\n{}", e.to_string());
+                        AstError::EvaluationFailed(s)
+                    })?;
+
+                    result.push_str(&iteration_result);
+                }
+            }
+
+            Value::Object(obj) => {
+                for (i, j) in obj.iter() {
+                    ctx.call_stack
+                        .get_mut_current_scope()
+                        .ok_or_else(|| {
+                            let s = format!("Failed to find current scope");
+                            AstError::EvaluationFailed(s)
+                        })?
+                        .set(for_node.l_identifier(), Literal::String(i.clone()));
+
+                    match j {
+                        Value::String(s) => {
+                            ctx.call_stack
+                                .get_mut_current_scope()
+                                .ok_or_else(|| {
+                                    let s = format!("Failed to find current scope");
+                                    AstError::EvaluationFailed(s)
+                                })?
+                                .set(for_node.r_identifier(), Literal::String(s.clone()));
+                        }
+
+                        Value::Number(i) => {
+                            ctx.call_stack
+                                .get_mut_current_scope()
+                                .ok_or_else(|| {
+                                    let s = format!("Failed to find current scope");
+                                    AstError::EvaluationFailed(s)
+                                })?
+                                .set(for_node.r_identifier(), Literal::String(i.to_string()));
+                        }
+
+                        Value::Bool(b) => {
+                            ctx.call_stack
+                                .get_mut_current_scope()
+                                .ok_or_else(|| {
+                                    let s = format!("Failed to find current scope");
+                                    AstError::EvaluationFailed(s)
+                                })?
+                                .set(for_node.r_identifier(), Literal::String(b.to_string()));
+                        }
+
+                        _ => {
+                            let s = format!("Unsupported json format");
+                            return Err(AstError::EvaluationFailed(s));
+                        }
+                    }
+
+                    let iteration_result = root.evaluate(ctx).map_err(|e| {
+                        let s = format!("Failed to evaluate FOR directive\n{}", e.to_string());
+                        AstError::EvaluationFailed(s)
+                    })?;
+
+                    result.push_str(&iteration_result);
+                }
+            }
+
+            _ => {
+                let s = format!("Unknown json value at {}", path.display());
+                return Err(AstError::EvaluationFailed(s));
+            }
+        }
+
+        Ok(result)
+    }
+
     pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
-        Ok(String::new())
+        ctx.hint_stack.push(self.hint);
+        ctx.call_stack
+            .get_mut_current_frame()
+            .ok_or_else(|| {
+                let s = format!("Failed to find current frame");
+                AstError::EvaluationFailed(s)
+            })?
+            .enter_new_scope();
+
+        let root_node_id = self.root_node_id;
+        let root = ctx.node_store.take(root_node_id).ok_or_else(|| {
+            let s = format!("Failed to find node with id {:?}", root_node_id);
+            AstError::EvaluationFailed(s)
+        })?;
+
+        let r = match &self.for_type {
+            ForType::Iteration(i) => ForNode::evaluate_iteration(&self, i, &root, ctx),
+            ForType::Json(j) => ForNode::evaluate_json(&self, j, &root, ctx),
+        }?;
+
+        ctx.node_store.put_back(self.root_node_id, root);
+
+        ctx.call_stack
+            .get_mut_current_frame()
+            .ok_or_else(|| {
+                let s = format!("Failed to find current frame");
+                AstError::EvaluationFailed(s)
+            })?
+            .exit_current_scope();
+        ctx.hint_stack.pop();
+        Ok(r)
     }
 
     pub fn to_string(&self) -> String {
