@@ -1,7 +1,7 @@
 use super::branch::Branch;
 use super::error::AstError;
 use super::hint::Hint;
-use super::node::Node;
+use super::node::{AstNode, Node};
 use crate::config::{DIRECTIVE_END, IF_DIRECTIVE_START};
 use crate::context::Context;
 use crate::store::NodeStore;
@@ -9,6 +9,73 @@ use crate::store::NodeStore;
 pub struct IfNode {
     hint: Hint,
     branches: Vec<Branch>,
+}
+
+impl AstNode for IfNode {
+    fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
+        ctx.hint_stack.push(self.hint);
+        ctx.call_stack
+            .get_mut_current_frame()
+            .ok_or_else(|| {
+                let s = format!("Failed to find current frame");
+                AstError::EvaluationFailed(s)
+            })?
+            .enter_new_scope();
+
+        let mut result = String::new();
+
+        for branch in &self.branches {
+            let branch_to_take = branch.evaluate(ctx).map_err(|e| {
+                let s = format!(
+                    "Failed to evaluate branch in IF directive\n{}",
+                    e.to_string()
+                );
+                AstError::EvaluationFailed(s)
+            })?;
+
+            if branch_to_take {
+                let root = ctx.node_store.take(branch.root_node_id()).ok_or_else(|| {
+                    let s = format!("Failed to find node with id {:?}", branch.root_node_id());
+                    AstError::EvaluationFailed(s)
+                })?;
+
+                let branch_result = root.evaluate(ctx).map_err(|e| {
+                    let s = format!(
+                        "Failed to evaluate branch of IF directive\n{}",
+                        e.to_string()
+                    );
+                    AstError::EvaluationFailed(s)
+                })?;
+
+                ctx.node_store.put_back(branch.root_node_id(), root);
+                result.push_str(&branch_result);
+                break;
+            }
+        }
+
+        ctx.call_stack
+            .get_mut_current_frame()
+            .ok_or_else(|| {
+                let s = format!("Failed to find current frame");
+                AstError::EvaluationFailed(s)
+            })?
+            .exit_current_scope();
+        ctx.hint_stack.pop();
+        Ok(result)
+    }
+
+    fn to_string(&self) -> String {
+        format!("IfNode({}, {})", self.branches.len(), self.hint.to_string())
+    }
+
+    fn debug(&self, indent: usize, ns: &NodeStore) {
+        let indent_str = " ".repeat(indent);
+        println!("{}{}", indent_str, self.to_string());
+
+        for branch in &self.branches {
+            branch.debug(indent + 4, ns);
+        }
+    }
 }
 
 impl IfNode {
@@ -86,71 +153,7 @@ impl IfNode {
             branches.push(branch)
         }
 
-        Ok(Node::If(Self { branches, hint }))
-    }
-
-    pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
-        ctx.hint_stack.push(self.hint);
-        ctx.call_stack
-            .get_mut_current_frame()
-            .ok_or_else(|| {
-                let s = format!("Failed to find current frame");
-                AstError::EvaluationFailed(s)
-            })?
-            .enter_new_scope();
-
-        let mut result = String::new();
-
-        for branch in &self.branches {
-            let branch_to_take = branch.evaluate(ctx).map_err(|e| {
-                let s = format!(
-                    "Failed to evaluate branch in IF directive\n{}",
-                    e.to_string()
-                );
-                AstError::EvaluationFailed(s)
-            })?;
-
-            if branch_to_take {
-                let root = ctx.node_store.take(branch.root_node_id()).ok_or_else(|| {
-                    let s = format!("Failed to find node with id {:?}", branch.root_node_id());
-                    AstError::EvaluationFailed(s)
-                })?;
-
-                let branch_result = root.evaluate(ctx).map_err(|e| {
-                    let s = format!(
-                        "Failed to evaluate branch of IF directive\n{}",
-                        e.to_string()
-                    );
-                    AstError::EvaluationFailed(s)
-                })?;
-
-                ctx.node_store.put_back(branch.root_node_id(), root);
-                result.push_str(&branch_result);
-                break;
-            }
-        }
-
-        ctx.call_stack
-            .get_mut_current_frame()
-            .ok_or_else(|| {
-                let s = format!("Failed to find current frame");
-                AstError::EvaluationFailed(s)
-            })?
-            .exit_current_scope();
-        ctx.hint_stack.pop();
-        Ok(result)
-    }
-
-    pub fn to_string(&self) -> String {
-        format!("IfNode({}, {})", self.branches.len(), self.hint.to_string())
-    }
-
-    pub fn debug(&self, indent: usize, ns: &NodeStore) {
-        let indent_str = " ".repeat(indent);
-        println!("{}{}", indent_str, self.to_string());
-
-        for branch in &self.branches {
-            branch.debug(indent + 4, ns);
-        }
+        let node = Self { branches, hint };
+        Ok(Box::new(node))
     }
 }

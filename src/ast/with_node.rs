@@ -1,7 +1,7 @@
 use super::ast;
 use super::error::AstError;
 use super::hint::Hint;
-use super::node::Node;
+use super::node::{AstNode, Node};
 use crate::config::{DIRECTIVE_END, WITH_DIRECTIVE_START};
 use crate::context::Context;
 use crate::store::{FileId, NodeId, NodeStore};
@@ -13,6 +13,80 @@ pub struct WithNode {
     root_node_id: NodeId,
     identifier: String,
     hint: Hint,
+}
+
+impl AstNode for WithNode {
+    fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
+        ctx.hint_stack.push(self.hint);
+        ctx.call_stack
+            .get_mut_current_frame()
+            .ok_or_else(|| {
+                let s = format!("Failed to find current frame");
+                AstError::EvaluationFailed(s)
+            })?
+            .enter_new_scope();
+
+        let path = ctx.file_store.get_by_id(self.file_id).ok_or_else(|| {
+            let s = format!("Failed to find path for file id {:?}", self.file_id);
+            AstError::EvaluationFailed(s)
+        })?;
+
+        ctx.call_stack
+            .get_mut_current_scope()
+            .ok_or_else(|| {
+                let s = format!("Failed to find current scope");
+                AstError::EvaluationFailed(s)
+            })?
+            .open(&self.identifier, path, self.file_id)
+            .map_err(|e| {
+                let s = format!(
+                    "Failed to evaluate WITH directive of {}\n{}",
+                    path.display(),
+                    e.to_string()
+                );
+                AstError::EvaluationFailed(s)
+            })?;
+
+        let root = ctx.node_store.take(self.root_node_id).ok_or_else(|| {
+            let s = format!("Failed to find node with id {:?}", self.root_node_id);
+            AstError::EvaluationFailed(s)
+        })?;
+
+        let result = root.evaluate(ctx).map_err(|e| {
+            let s = format!("Failed to evaluate WITH directive body\n{}", e.to_string());
+            AstError::EvaluationFailed(s)
+        })?;
+
+        ctx.node_store.put_back(self.root_node_id, root);
+        ctx.call_stack
+            .get_mut_current_frame()
+            .ok_or_else(|| {
+                let s = format!("Failed to find current frame");
+                AstError::EvaluationFailed(s)
+            })?
+            .exit_current_scope();
+
+        ctx.hint_stack.pop();
+        Ok(result)
+    }
+
+    fn to_string(&self) -> String {
+        format!(
+            "WithNode({}, {:?}, {:?}, {})",
+            self.identifier,
+            self.file_id,
+            self.root_node_id,
+            self.hint.to_string()
+        )
+    }
+
+    fn debug(&self, indent: usize, ns: &NodeStore) {
+        let indent_str = " ".repeat(indent);
+        println!("{}{}", indent_str, self.to_string());
+
+        let node = ns.get(self.root_node_id).unwrap();
+        node.debug(indent + 4, ns);
+    }
 }
 
 impl WithNode {
@@ -96,83 +170,13 @@ impl WithNode {
                 },
             )?;
 
-        Ok(Node::With(Self {
+        let node = Self {
             identifier: identifier.to_string(),
             file_id,
             root_node_id,
             hint,
-        }))
-    }
+        };
 
-    pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
-        ctx.hint_stack.push(self.hint);
-        ctx.call_stack
-            .get_mut_current_frame()
-            .ok_or_else(|| {
-                let s = format!("Failed to find current frame");
-                AstError::EvaluationFailed(s)
-            })?
-            .enter_new_scope();
-
-        let path = ctx.file_store.get_by_id(self.file_id).ok_or_else(|| {
-            let s = format!("Failed to find path for file id {:?}", self.file_id);
-            AstError::EvaluationFailed(s)
-        })?;
-
-        ctx.call_stack
-            .get_mut_current_scope()
-            .ok_or_else(|| {
-                let s = format!("Failed to find current scope");
-                AstError::EvaluationFailed(s)
-            })?
-            .open(&self.identifier, path, self.file_id)
-            .map_err(|e| {
-                let s = format!(
-                    "Failed to evaluate WITH directive of {}\n{}",
-                    path.display(),
-                    e.to_string()
-                );
-                AstError::EvaluationFailed(s)
-            })?;
-
-        let root = ctx.node_store.take(self.root_node_id).ok_or_else(|| {
-            let s = format!("Failed to find node with id {:?}", self.root_node_id);
-            AstError::EvaluationFailed(s)
-        })?;
-
-        let result = root.evaluate(ctx).map_err(|e| {
-            let s = format!("Failed to evaluate WITH directive body\n{}", e.to_string());
-            AstError::EvaluationFailed(s)
-        })?;
-
-        ctx.node_store.put_back(self.root_node_id, root);
-        ctx.call_stack
-            .get_mut_current_frame()
-            .ok_or_else(|| {
-                let s = format!("Failed to find current frame");
-                AstError::EvaluationFailed(s)
-            })?
-            .exit_current_scope();
-
-        ctx.hint_stack.pop();
-        Ok(result)
-    }
-
-    pub fn to_string(&self) -> String {
-        format!(
-            "WithNode({}, {:?}, {:?}, {})",
-            self.identifier,
-            self.file_id,
-            self.root_node_id,
-            self.hint.to_string()
-        )
-    }
-
-    pub fn debug(&self, indent: usize, ns: &NodeStore) {
-        let indent_str = " ".repeat(indent);
-        println!("{}{}", indent_str, self.to_string());
-
-        let node = ns.get(self.root_node_id).unwrap();
-        node.debug(indent + 4, ns);
+        Ok(Box::new(node))
     }
 }

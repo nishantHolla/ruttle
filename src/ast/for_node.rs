@@ -2,7 +2,7 @@ use super::ast;
 use super::error::AstError;
 use super::hint::Hint;
 use super::literal::Literal;
-use super::node::Node;
+use super::node::{AstNode, Node};
 use crate::config::{self, DIRECTIVE_END, FOR_DIRECTIVE_START};
 use crate::context::Context;
 use crate::store::{FileId, NodeId, NodeStore};
@@ -59,6 +59,60 @@ pub struct ForNode {
     r_identifier: String,
     hint: Hint,
     root_node_id: NodeId,
+}
+
+impl AstNode for ForNode {
+    fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
+        ctx.hint_stack.push(self.hint);
+        ctx.call_stack
+            .get_mut_current_frame()
+            .ok_or_else(|| {
+                let s = format!("Failed to find current frame");
+                AstError::EvaluationFailed(s)
+            })?
+            .enter_new_scope();
+
+        let root_node_id = self.root_node_id;
+        let root = ctx.node_store.take(root_node_id).ok_or_else(|| {
+            let s = format!("Failed to find node with id {:?}", root_node_id);
+            AstError::EvaluationFailed(s)
+        })?;
+
+        let r = match &self.for_type {
+            ForType::Iteration(i) => ForNode::evaluate_iteration(&self, i, &root, ctx),
+            ForType::Json(j) => ForNode::evaluate_json(&self, j, &root, ctx),
+        }?;
+
+        ctx.node_store.put_back(self.root_node_id, root);
+
+        ctx.call_stack
+            .get_mut_current_frame()
+            .ok_or_else(|| {
+                let s = format!("Failed to find current frame");
+                AstError::EvaluationFailed(s)
+            })?
+            .exit_current_scope();
+        ctx.hint_stack.pop();
+        Ok(r)
+    }
+
+    fn to_string(&self) -> String {
+        format!(
+            "ForNode({}, {}, {}, {})",
+            self.l_identifier,
+            self.r_identifier,
+            self.for_type.to_string(),
+            self.hint.to_string()
+        )
+    }
+
+    fn debug(&self, indent: usize, ns: &NodeStore) {
+        let indent_str = " ".repeat(indent);
+        println!("{}{}", indent_str, self.to_string());
+
+        let node = ns.get(self.root_node_id).unwrap();
+        node.debug(indent + 4, ns);
+    }
 }
 
 impl ForNode {
@@ -195,13 +249,15 @@ impl ForNode {
                         AstError::InvalidSyntax(s)
                     })?;
 
-            return Ok(Node::For(Self {
+            let node = Self {
                 for_type,
                 hint,
                 l_identifier: l_identifier.to_string(),
                 r_identifier: r_identifier.to_string(),
                 root_node_id,
-            }));
+            };
+
+            return Ok(Box::new(node));
         } else {
             let s = format!("Failed to parse FOR directive");
             return Err(AstError::InvalidSyntax(s));
@@ -428,57 +484,5 @@ impl ForNode {
         }
 
         Ok(result)
-    }
-
-    pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
-        ctx.hint_stack.push(self.hint);
-        ctx.call_stack
-            .get_mut_current_frame()
-            .ok_or_else(|| {
-                let s = format!("Failed to find current frame");
-                AstError::EvaluationFailed(s)
-            })?
-            .enter_new_scope();
-
-        let root_node_id = self.root_node_id;
-        let root = ctx.node_store.take(root_node_id).ok_or_else(|| {
-            let s = format!("Failed to find node with id {:?}", root_node_id);
-            AstError::EvaluationFailed(s)
-        })?;
-
-        let r = match &self.for_type {
-            ForType::Iteration(i) => ForNode::evaluate_iteration(&self, i, &root, ctx),
-            ForType::Json(j) => ForNode::evaluate_json(&self, j, &root, ctx),
-        }?;
-
-        ctx.node_store.put_back(self.root_node_id, root);
-
-        ctx.call_stack
-            .get_mut_current_frame()
-            .ok_or_else(|| {
-                let s = format!("Failed to find current frame");
-                AstError::EvaluationFailed(s)
-            })?
-            .exit_current_scope();
-        ctx.hint_stack.pop();
-        Ok(r)
-    }
-
-    pub fn to_string(&self) -> String {
-        format!(
-            "ForNode({}, {}, {}, {})",
-            self.l_identifier,
-            self.r_identifier,
-            self.for_type.to_string(),
-            self.hint.to_string()
-        )
-    }
-
-    pub fn debug(&self, indent: usize, ns: &NodeStore) {
-        let indent_str = " ".repeat(indent);
-        println!("{}{}", indent_str, self.to_string());
-
-        let node = ns.get(self.root_node_id).unwrap();
-        node.debug(indent + 4, ns);
     }
 }

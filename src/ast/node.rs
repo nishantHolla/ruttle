@@ -1,63 +1,11 @@
-use super::define_node::DefineNode;
 use super::error::AstError;
-use super::for_node::ForNode;
-use super::if_node::IfNode;
-use super::include_node::IncludeNode;
-use super::interpolate_node::InterpolateNode;
-use super::root_node::RootNode;
-use super::text_node::TextNode;
-use super::with_node::WithNode;
 use crate::context::Context;
 use crate::store::NodeStore;
 
-pub enum Node {
-    Root(RootNode),
-    Text(TextNode),
-    Define(DefineNode),
-    Interpolate(InterpolateNode),
-    Include(IncludeNode),
-    With(WithNode),
-    For(ForNode),
-    If(IfNode),
-}
+pub type Node = Box<dyn AstNode>;
 
-impl Node {
-    pub fn to_string(&self) -> String {
-        match self {
-            Node::Root(n) => n.to_string(),
-            Node::Text(n) => n.to_string(),
-            Node::Define(n) => n.to_string(),
-            Node::Interpolate(n) => n.to_string(),
-            Node::Include(n) => n.to_string(),
-            Node::With(n) => n.to_string(),
-            Node::For(n) => n.to_string(),
-            Node::If(n) => n.to_string(),
-        }
-    }
-
-    pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
-        match self {
-            Node::Root(n) => n.evaluate(ctx),
-            Node::Text(n) => n.evaluate(ctx),
-            Node::Define(n) => n.evaluate(ctx),
-            Node::Interpolate(n) => n.evaluate(ctx),
-            Node::Include(n) => n.evaluate(ctx),
-            Node::With(n) => n.evaluate(ctx),
-            Node::For(n) => n.evaluate(ctx),
-            Node::If(n) => n.evaluate(ctx),
-        }
-    }
-
-    pub fn debug(&self, indent: usize, ns: &NodeStore) {
-        match self {
-            Node::Root(n) => n.debug(indent, ns),
-            Node::Text(n) => n.debug(indent),
-            Node::Define(n) => n.debug(indent),
-            Node::Interpolate(n) => n.debug(indent),
-            Node::Include(n) => n.debug(indent),
-            Node::With(n) => n.debug(indent, ns),
-            Node::For(n) => n.debug(indent, ns),
-            Node::If(n) => n.debug(indent, ns),
-        }
-    }
+pub trait AstNode {
+    fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError>;
+    fn debug(&self, indent: usize, ns: &NodeStore);
+    fn to_string(&self) -> String;
 }

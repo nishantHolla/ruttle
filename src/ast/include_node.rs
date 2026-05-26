@@ -1,10 +1,10 @@
 use super::error::AstError;
 use super::hint::Hint;
 use super::literal::Literal;
-use super::node::Node;
+use super::node::{AstNode, Node};
 use crate::config::{DIRECTIVE_END, INCLUDE_DIRECTIVE_START, KV_SPLIT};
 use crate::context::Context;
-use crate::store::FileId;
+use crate::store::{FileId, NodeStore};
 use crate::util;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -13,6 +13,72 @@ pub struct IncludeNode {
     file_id: FileId,
     props: BTreeMap<String, Literal>,
     hint: Hint,
+}
+
+impl AstNode for IncludeNode {
+    fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
+        ctx.hint_stack.push(self.hint);
+
+        let mut props: BTreeMap<String, Literal> = BTreeMap::new();
+
+        for (k, v) in &self.props {
+            let value = v.evaluate(ctx).ok_or_else(|| {
+                let s = format!("Failed to evaluate literal {}", v.to_string());
+                AstError::EvaluationFailed(s)
+            })?;
+            props.insert(k.clone(), Literal::String(value));
+        }
+
+        ctx.call_stack
+            .push(self.file_id, Some(props))
+            .map_err(|e| {
+                let path = ctx.file_store.get_by_id(self.file_id).unwrap();
+                let s = format!(
+                    "Recursive include detected in path {}\n{}",
+                    path.display(),
+                    e.to_string()
+                );
+                AstError::EvaluationFailed(s)
+            })?;
+
+        let result = ctx.generate(self.file_id).map_err(|e| {
+            let s = format!("Failed to evaluate included path\n{}", e.to_string());
+            AstError::EvaluationFailed(s)
+        })?;
+
+        let result = result.trim().to_string();
+
+        ctx.call_stack.pop();
+        ctx.hint_stack.pop();
+        Ok(result)
+    }
+
+    fn to_string(&self) -> String {
+        let mut props_str = String::new();
+
+        let mut counter = 1;
+        for (k, v) in &self.props {
+            props_str.push_str(&format!("{}={}", k, v.display()));
+
+            if counter != self.props.len() {
+                props_str.push_str(" ");
+            }
+
+            counter += 1;
+        }
+
+        format!(
+            "IncludeNode({:?}, {}, {})",
+            self.file_id,
+            props_str,
+            self.hint.to_string()
+        )
+    }
+
+    fn debug(&self, indent: usize, _: &NodeStore) {
+        let indent_str = " ".repeat(indent);
+        println!("{}{}", indent_str, self.to_string());
+    }
 }
 
 impl IncludeNode {
@@ -91,74 +157,12 @@ impl IncludeNode {
             props.insert(key.to_string(), Literal::parse(value));
         }
 
-        Ok(Node::Include(Self {
+        let node = Self {
             file_id,
             props,
             hint,
-        }))
-    }
+        };
 
-    pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
-        ctx.hint_stack.push(self.hint);
-
-        let mut props: BTreeMap<String, Literal> = BTreeMap::new();
-
-        for (k, v) in &self.props {
-            let value = v.evaluate(ctx).ok_or_else(|| {
-                let s = format!("Failed to evaluate literal {}", v.to_string());
-                AstError::EvaluationFailed(s)
-            })?;
-            props.insert(k.clone(), Literal::String(value));
-        }
-
-        ctx.call_stack
-            .push(self.file_id, Some(props))
-            .map_err(|e| {
-                let path = ctx.file_store.get_by_id(self.file_id).unwrap();
-                let s = format!(
-                    "Recursive include detected in path {}\n{}",
-                    path.display(),
-                    e.to_string()
-                );
-                AstError::EvaluationFailed(s)
-            })?;
-
-        let result = ctx.generate(self.file_id).map_err(|e| {
-            let s = format!("Failed to evaluate included path\n{}", e.to_string());
-            AstError::EvaluationFailed(s)
-        })?;
-
-        let result = result.trim().to_string();
-
-        ctx.call_stack.pop();
-        ctx.hint_stack.pop();
-        Ok(result)
-    }
-
-    pub fn to_string(&self) -> String {
-        let mut props_str = String::new();
-
-        let mut counter = 1;
-        for (k, v) in &self.props {
-            props_str.push_str(&format!("{}={}", k, v.display()));
-
-            if counter != self.props.len() {
-                props_str.push_str(" ");
-            }
-
-            counter += 1;
-        }
-
-        format!(
-            "IncludeNode({:?}, {}, {})",
-            self.file_id,
-            props_str,
-            self.hint.to_string()
-        )
-    }
-
-    pub fn debug(&self, indent: usize) {
-        let indent_str = " ".repeat(indent);
-        println!("{}{}", indent_str, self.to_string());
+        Ok(Box::new(node))
     }
 }

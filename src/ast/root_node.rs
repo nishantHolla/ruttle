@@ -1,5 +1,5 @@
 use super::error::AstError;
-use super::node::Node;
+use super::node::{AstNode, Node};
 use crate::context::Context;
 use crate::store::{NodeId, NodeStore};
 
@@ -7,12 +7,8 @@ pub struct RootNode {
     children: Vec<NodeId>,
 }
 
-impl RootNode {
-    pub fn new(children: Vec<NodeId>) -> Node {
-        Node::Root(Self { children })
-    }
-
-    pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
+impl AstNode for RootNode {
+    fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
         let mut result = String::new();
 
         for node_id in &self.children {
@@ -30,11 +26,11 @@ impl RootNode {
         Ok(result)
     }
 
-    pub fn to_string(&self) -> String {
+    fn to_string(&self) -> String {
         format!("RootNode({:?})", self.children)
     }
 
-    pub fn debug(&self, indent: usize, ns: &NodeStore) {
+    fn debug(&self, indent: usize, ns: &NodeStore) {
         let indent_str = " ".repeat(indent);
         println!("{}{}", indent_str, self.to_string());
 
@@ -42,5 +38,12 @@ impl RootNode {
             let node = ns.get(*node_id).unwrap();
             node.debug(indent + 4, ns);
         }
+    }
+}
+
+impl RootNode {
+    pub fn new(children: Vec<NodeId>) -> Node {
+        let node = Self { children };
+        Box::new(node)
     }
 }

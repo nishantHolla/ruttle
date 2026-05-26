@@ -1,8 +1,9 @@
 use super::error::AstError;
 use super::hint::Hint;
-use super::node::Node;
+use super::node::{AstNode, Node};
 use crate::config::{DIRECTIVE_END, INTERPOLATE_DIRECTIVE_START};
 use crate::context::Context;
+use crate::store::NodeStore;
 use crate::util;
 
 pub struct InterpolateNode {
@@ -10,27 +11,8 @@ pub struct InterpolateNode {
     hint: Hint,
 }
 
-impl InterpolateNode {
-    pub fn parse(s: &str, hint: Hint) -> Result<Node, AstError> {
-        let s = util::string::normalize_whitespace(s, None);
-
-        let inner = s
-            .trim_start_matches(INTERPOLATE_DIRECTIVE_START)
-            .trim_end_matches(DIRECTIVE_END)
-            .trim();
-
-        if inner.len() == 0 {
-            let s = format!("Could not find 'value' of INTERPOLATE directive");
-            return Err(AstError::InvalidSyntax(s));
-        }
-
-        Ok(Node::Interpolate(Self {
-            key: inner.to_string(),
-            hint,
-        }))
-    }
-
-    pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
+impl AstNode for InterpolateNode {
+    fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
         ctx.hint_stack.push(self.hint);
 
         let current_frame = ctx.call_stack.get_current_frame().ok_or_else(|| {
@@ -52,12 +34,35 @@ impl InterpolateNode {
         Ok(result)
     }
 
-    pub fn to_string(&self) -> String {
+    fn to_string(&self) -> String {
         format!("InterpolateNode({}, {})", self.key, self.hint.to_string())
     }
 
-    pub fn debug(&self, indent: usize) {
+    fn debug(&self, indent: usize, _: &NodeStore) {
         let indent_str = " ".repeat(indent);
         println!("{}{}", indent_str, self.to_string());
+    }
+}
+
+impl InterpolateNode {
+    pub fn parse(s: &str, hint: Hint) -> Result<Node, AstError> {
+        let s = util::string::normalize_whitespace(s, None);
+
+        let inner = s
+            .trim_start_matches(INTERPOLATE_DIRECTIVE_START)
+            .trim_end_matches(DIRECTIVE_END)
+            .trim();
+
+        if inner.len() == 0 {
+            let s = format!("Could not find 'value' of INTERPOLATE directive");
+            return Err(AstError::InvalidSyntax(s));
+        }
+
+        let node = Self {
+            key: inner.to_string(),
+            hint,
+        };
+
+        Ok(Box::new(node))
     }
 }

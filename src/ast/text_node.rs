@@ -1,19 +1,16 @@
 use super::error::AstError;
 use super::hint::Hint;
-use super::node::Node;
+use super::node::{AstNode, Node};
 use crate::context::Context;
+use crate::store::NodeStore;
 use crate::util;
 
 pub struct TextNode {
     hint: Hint,
 }
 
-impl TextNode {
-    pub fn parse(hint: Hint) -> Result<Node, AstError> {
-        Ok(Node::Text(Self { hint }))
-    }
-
-    pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
+impl AstNode for TextNode {
+    fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
         ctx.hint_stack.push(self.hint);
 
         let file_id = self.hint.file_id();
@@ -34,12 +31,19 @@ impl TextNode {
         Ok(substr)
     }
 
-    pub fn to_string(&self) -> String {
+    fn to_string(&self) -> String {
         format!("TextNode({})", self.hint.to_string())
     }
 
-    pub fn debug(&self, indent: usize) {
+    fn debug(&self, indent: usize, _: &NodeStore) {
         let indent_str = " ".repeat(indent);
         println!("{}{}", indent_str, self.to_string());
+    }
+}
+
+impl TextNode {
+    pub fn parse(hint: Hint) -> Result<Node, AstError> {
+        let node = Self { hint };
+        Ok(Box::new(node))
     }
 }

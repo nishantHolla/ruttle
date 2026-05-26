@@ -1,15 +1,47 @@
 use super::error::AstError;
 use super::hint::Hint;
 use super::literal::Literal;
-use super::node::Node;
+use super::node::{AstNode, Node};
 use crate::config::{DEFINE_DIRECTIVE_START, DIRECTIVE_END, KV_SPLIT};
 use crate::context::Context;
+use crate::store::NodeStore;
 use crate::util;
 
 pub struct DefineNode {
     key: String,
     value: Literal,
     hint: Hint,
+}
+
+impl AstNode for DefineNode {
+    fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
+        ctx.hint_stack.push(self.hint);
+
+        ctx.call_stack
+            .get_mut_current_scope()
+            .ok_or_else(|| {
+                let s = format!("Failed to find current scope");
+                AstError::EvaluationFailed(s)
+            })?
+            .set(&self.key, self.value.clone());
+
+        ctx.hint_stack.pop();
+        Ok(String::new())
+    }
+
+    fn to_string(&self) -> String {
+        format!(
+            "DefineNode({}, {}, {})",
+            self.key,
+            self.value.display(),
+            self.hint.to_string()
+        )
+    }
+
+    fn debug(&self, indent: usize, _: &NodeStore) {
+        let indent_str = " ".repeat(indent);
+        println!("{}{}", indent_str, self.to_string());
+    }
 }
 
 impl DefineNode {
@@ -52,39 +84,12 @@ impl DefineNode {
         let value = &value[1..value.len() - 1];
         let value = value.replace("\\\"", "\"");
 
-        Ok(Node::Define(Self {
+        let node = Self {
             key: key.to_string(),
             value: Literal::parse(&value),
             hint,
-        }))
-    }
+        };
 
-    pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
-        ctx.hint_stack.push(self.hint);
-
-        ctx.call_stack
-            .get_mut_current_scope()
-            .ok_or_else(|| {
-                let s = format!("Failed to find current scope");
-                AstError::EvaluationFailed(s)
-            })?
-            .set(&self.key, self.value.clone());
-
-        ctx.hint_stack.pop();
-        Ok(String::new())
-    }
-
-    pub fn to_string(&self) -> String {
-        format!(
-            "DefineNode({}, {}, {})",
-            self.key,
-            self.value.display(),
-            self.hint.to_string()
-        )
-    }
-
-    pub fn debug(&self, indent: usize) {
-        let indent_str = " ".repeat(indent);
-        println!("{}{}", indent_str, self.to_string());
+        Ok(Box::new(node))
     }
 }
