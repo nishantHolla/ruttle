@@ -37,6 +37,8 @@ fn run() -> Result<(), (AppError, Option<Context>)> {
     }
 
     // Done
-    context.debug_with_ast();
+    if args.debug {
+        context.debug_with_ast();
+    }
     Ok(())
 }

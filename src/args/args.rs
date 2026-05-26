@@ -11,6 +11,9 @@ use std::path::PathBuf;
 #[command(long_about = None)]
 pub struct Args {
     #[arg(short, long)]
+    pub debug: bool,
+
+    #[arg(short, long)]
     pub output: PathBuf,
 
     #[arg(required = true)]
@@ -67,6 +70,10 @@ impl Args {
             inputs.push(r);
         }
 
-        Ok(Args { inputs, output })
+        Ok(Args {
+            inputs,
+            output,
+            debug: args.debug,
+        })
     }
 }
