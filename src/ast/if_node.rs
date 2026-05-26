@@ -1,76 +1,12 @@
+use super::ast;
+use super::branch::Branch;
 use super::error::AstError;
 use super::hint::Hint;
 use super::literal::Literal;
 use super::node::Node;
-use crate::config::{DIRECTIVE_END, IF_DIRECTIVE_START};
+use crate::config::{self, DIRECTIVE_END, IF_DIRECTIVE_START};
 use crate::context::Context;
-use crate::store::{NodeId, NodeStore};
-
-#[derive(Debug)]
-struct ConditionalBranch {
-    left: Literal,
-    right: Literal,
-    root_node_id: NodeId,
-}
-
-impl ConditionalBranch {
-    pub fn left(&self) -> &Literal {
-        &self.left
-    }
-
-    pub fn right(&self) -> &Literal {
-        &self.right
-    }
-
-    pub fn root_node_id(&self) -> NodeId {
-        self.root_node_id
-    }
-}
-
-#[derive(Debug)]
-struct UnconditionalBranch {
-    root_node_id: NodeId,
-}
-
-impl UnconditionalBranch {
-    pub fn root_node_id(&self) -> NodeId {
-        self.root_node_id
-    }
-}
-
-#[derive(Debug)]
-enum Branch {
-    Equals(ConditionalBranch),
-    NotEquals(ConditionalBranch),
-    Less(ConditionalBranch),
-    Greater(ConditionalBranch),
-    LessOrEquals(ConditionalBranch),
-    GreaterOrEquals(ConditionalBranch),
-    Unconditional(UnconditionalBranch),
-}
-
-impl Branch {
-    pub fn debug(&self, indent: usize, ns: &NodeStore) {
-        let (left, right, node_id) = match self {
-            Branch::Equals(e) => (Some(e.left()), Some(e.right()), e.root_node_id()),
-            Branch::NotEquals(e) => (Some(e.left()), Some(e.right()), e.root_node_id()),
-            Branch::Less(e) => (Some(e.left()), Some(e.right()), e.root_node_id()),
-            Branch::Greater(e) => (Some(e.left()), Some(e.right()), e.root_node_id()),
-            Branch::LessOrEquals(e) => (Some(e.left()), Some(e.right()), e.root_node_id()),
-            Branch::GreaterOrEquals(e) => (Some(e.left()), Some(e.right()), e.root_node_id()),
-            Branch::Unconditional(e) => (None, None, e.root_node_id()),
-        };
-
-        println!(
-            "{:?}({}, {})",
-            self,
-            left.unwrap().to_string(),
-            right.unwrap().to_string()
-        );
-        let node = ns.get(node_id).unwrap();
-        node.debug(indent + 4, ns);
-    }
-}
+use crate::store::NodeStore;
 
 pub struct IfNode {
     hint: Hint,
@@ -78,6 +14,56 @@ pub struct IfNode {
 }
 
 impl IfNode {
+    fn split_directive(input: &str) -> Result<Vec<&str>, String> {
+        let mut parts = Vec::new();
+        let mut in_quotes = false;
+        let mut seen_else = false;
+        let mut start = 0;
+
+        let bytes = input.as_bytes();
+        let mut i = 0;
+
+        while i < bytes.len() {
+            match bytes[i] {
+                b'"' => {
+                    in_quotes = !in_quotes;
+                    i += 1;
+                }
+
+                b'#' if !in_quotes => {
+                    if input[i..].starts_with("#elseif") {
+                        if seen_else {
+                            let s = format!("#elseif appears after #else in IF directive");
+                            return Err(s);
+                        }
+
+                        parts.push(input[start..i].trim());
+                        start = i;
+                        i += "#elseif".len();
+                    } else if input[i..].starts_with("#else") {
+                        if seen_else {
+                            let s = format!("Multiple #else in IF directive");
+                            return Err(s);
+                        }
+
+                        seen_else = true;
+                        parts.push(input[start..i].trim());
+                        start = i;
+                        i += "#else".len();
+                    } else {
+                        i += 1;
+                    }
+                }
+
+                _ => i += 1,
+            }
+        }
+
+        parts.push(input[start..].trim());
+
+        Ok(parts)
+    }
+
     pub fn parse(s: &str, hint: Hint, ctx: &mut Context) -> Result<Node, AstError> {
         let initial_s = s.to_string();
 
@@ -85,11 +71,28 @@ impl IfNode {
             .trim_start_matches(IF_DIRECTIVE_START)
             .trim_end_matches(DIRECTIVE_END)
             .trim();
-        unimplemented!("Not implemented yet");
+
+        let parts = IfNode::split_directive(inner).map_err(|e| {
+            let s = format!("Failed to parse IF directive\n{}", e);
+            AstError::InvalidSyntax(s)
+        })?;
+
+        if parts.is_empty() {
+            let s = format!("Failed to identify branches of the IF directive");
+            return Err(AstError::InvalidSyntax(s));
+        }
+
+        let mut branches: Vec<Branch> = Vec::new();
+        for &part in parts.iter() {
+            let branch = Branch::parse(part, &initial_s, hint, ctx)?;
+            branches.push(branch)
+        }
+
+        Ok(Node::If(Self { branches, hint }))
     }
 
     pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
-        unimplemented!("Not implemented yet");
+        Ok(String::new())
     }
 
     pub fn to_string(&self) -> String {
