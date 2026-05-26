@@ -19,7 +19,7 @@ pub const DIRECTIVE_REGEX: &str = r"\{#(define|value|include|with|for|if)\b";
 pub const FOR_DIRECTIVE_REGEX: &str = r"(?<l>\w+)[\s\n]*,[\s\n]*(?<r>\w+)[\s\n]+(?<keyword>\w+)[\s\n]+(?:(?<range>[+\-]?\d+\.\.[+\-]?\d+\.\.[+\-]?\d+)|(?<path>\S+))[\s\n]+(?<body>.*)$";
 pub const INTERPOLATE_DIRECTIVE_REGEX: &str = r"\{#value[\s\n]+([\w.]+)[\s\n]*\}";
 pub const IF_DIRECTIVE_REGEX: &str =
-    r#"(?<l>\w+)[\s\n]*(?<c>==|>=|<=|!=|>|<)[\s\n]*(?<r>"\w+")[\s\n]+(?<b>[\s\S]*)"#;
+    r#"(?<l>"\w+")[\s\n]*(?<c>==|>=|<=|!=|>|<)[\s\n]*(?<r>"\w+")[\s\n]+(?<b>[\s\S]*)"#;
 
 pub static DIRECTIVE_RE: std::sync::LazyLock<Regex> =
     std::sync::LazyLock::new(|| Regex::new(DIRECTIVE_REGEX).unwrap());

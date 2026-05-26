@@ -24,10 +24,20 @@ impl Literal {
     pub fn compare(&self, other: &Literal, cmp: Comparison) -> Result<bool, String> {
         use Comparison::*;
 
+        fn coerce(lit: &Literal) -> Literal {
+            match lit {
+                Literal::String(s) => Literal::parse(s),
+                _ => lit.clone(),
+            }
+        }
+
+        let left = coerce(self);
+        let right = coerce(other);
+
         match cmp {
             Unconditional => Ok(true),
 
-            Equals => Ok(match (self, other) {
+            Equals => Ok(match (&left, &right) {
                 (Literal::String(a), Literal::String(b)) => a == b,
                 (Literal::Integer(a), Literal::Integer(b)) => a == b,
                 (Literal::Decimal(a), Literal::Decimal(b)) => a == b,
@@ -36,10 +46,10 @@ impl Literal {
                 _ => false,
             }),
 
-            NotEquals => Ok(!self.compare(other, Equals)?),
+            NotEquals => Ok(!left.compare(&right, Equals)?),
 
             Less | Greater | LessOrEquals | GreaterOrEquals => {
-                let ordering = match (self, other) {
+                let ordering = match (&left, &right) {
                     (Literal::Integer(a), Literal::Integer(b)) => a.partial_cmp(b),
                     (Literal::Decimal(a), Literal::Decimal(b)) => a.partial_cmp(b),
                     (Literal::Integer(a), Literal::Decimal(b)) => (*a as f64).partial_cmp(b),
@@ -48,8 +58,8 @@ impl Literal {
                     _ => {
                         return Err(format!(
                             "Cannot compare {} with {}",
-                            self.display(),
-                            other.display()
+                            left.display(),
+                            right.display()
                         ));
                     }
                 };
@@ -57,8 +67,8 @@ impl Literal {
                 let ord = ordering.ok_or_else(|| {
                     format!(
                         "Comparison failed between {} and {}",
-                        self.display(),
-                        other.display()
+                        left.display(),
+                        right.display()
                     )
                 })?;
 

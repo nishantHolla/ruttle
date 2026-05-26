@@ -43,6 +43,12 @@ pub fn find_directive_end(text: &str, start: usize) -> Option<usize> {
     None
 }
 
+pub fn is_valid_quote(s: &str) -> bool {
+    let has_front = s.starts_with("\"");
+    let has_back = s.starts_with("\"");
+    return !(has_front ^ has_back);
+}
+
 pub fn get_row_col(string: &str, index: usize) -> Option<(usize, usize)> {
     if index > string.len() {
         return None;

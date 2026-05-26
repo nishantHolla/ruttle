@@ -2,9 +2,9 @@ use super::ast;
 use super::error::AstError;
 use super::hint::Hint;
 use super::literal::Literal;
-use crate::config;
 use crate::context::Context;
 use crate::store::{NodeId, NodeStore};
+use crate::util;
 
 #[derive(Debug)]
 pub struct ConditionalBranch {
@@ -72,6 +72,15 @@ impl Branch {
         }
     }
 
+    fn split_comparison(s: &str) -> Option<(&str, &str, &str)> {
+        for op in ["==", "!=", "<=", ">=", ">", "<"] {
+            if let Some((left, right)) = s.split_once(op) {
+                return Some((left, op, right));
+            }
+        }
+        None
+    }
+
     pub fn parse(
         branch_str: &str,
         initial_s: &str,
@@ -84,37 +93,16 @@ impl Branch {
             .trim_start_matches("#else")
             .trim();
 
-        if let Some(mat) = config::IF_DIRECTIVE_RE.captures(branch_str) {
-            let l_identifier = mat.name("l").map(|m| m.as_str()).unwrap_or("");
-            let condition = mat.name("c").map(|m| m.as_str()).unwrap_or("");
-            let r_identifier = mat.name("r").map(|m| m.as_str()).unwrap_or("");
-            let body = mat.name("b").map(|m| m.as_str()).unwrap_or("");
+        if binding.starts_with("#elseif") || !binding.starts_with("#else") {
+            let (left, op, right) = Branch::split_comparison(branch_str).ok_or_else(|| {
+                let s = format!("Failed to find operator in IF directive");
+                AstError::InvalidSyntax(s)
+            })?;
 
-            if l_identifier.is_empty() {
-                let s = format!("Failed to find 'lhs' of IF directive in {}", branch_str);
-                return Err(AstError::InvalidSyntax(s));
-            }
-
-            if condition.is_empty() {
-                let s = format!(
-                    "Failed to find 'condition' of IF directive in {}",
-                    branch_str
-                );
-                return Err(AstError::InvalidSyntax(s));
-            }
-
-            if r_identifier.is_empty() {
-                let s = format!("Failed to find 'rhs' of IF directive in {}", branch_str);
-                return Err(AstError::InvalidSyntax(s));
-            }
-
-            if body.is_empty() {
-                let s = format!("Failed to find body of IF directive, in {}", branch_str);
-                return Err(AstError::InvalidSyntax(s));
-            }
-
-            let l_lit = Literal::String(l_identifier.to_string());
-            let r_lit = Literal::String(r_identifier.to_string());
+            let (right, body) = right.split_once(char::is_whitespace).ok_or_else(|| {
+                let s = format!("Failed to find body in IF directive");
+                AstError::InvalidSyntax(s)
+            })?;
 
             let start_pos = initial_s.find(body).unwrap() + hint.start();
             let root_node_id = ast::from_file(
@@ -132,8 +120,34 @@ impl Branch {
                 AstError::InvalidSyntax(s)
             })?;
 
-            let branch = Branch::new_conditional(l_lit, r_lit, root_node_id, condition)
-                .ok_or_else(|| {
+            if !util::string::is_valid_quote(left) {
+                let s = format!("Unclosed '\"' in 'lhs' of IF directive");
+                return Err(AstError::InvalidSyntax(s));
+            }
+
+            if !util::string::is_valid_quote(right) {
+                let s = format!("Unclosed '\"' in 'right' of IF directive");
+                return Err(AstError::InvalidSyntax(s));
+            }
+
+            let left = if left.starts_with("\"") {
+                let s = left.trim_start_matches("\"").trim_end_matches("\"").trim();
+                Literal::parse(s)
+            } else {
+                let s = format!("{{#value {}}}", left);
+                Literal::parse(&s)
+            };
+
+            let right = if right.starts_with("\"") {
+                let s = right.trim_start_matches("\"").trim_end_matches("\"").trim();
+                Literal::parse(s)
+            } else {
+                let s = format!("{{#value {}}}", right);
+                Literal::parse(&s)
+            };
+
+            let branch =
+                Branch::new_conditional(left, right, root_node_id, op).ok_or_else(|| {
                     let s = format!("Failed to parse branch of IF directive in {}", branch_str);
                     AstError::InvalidSyntax(s)
                 })?;
@@ -158,10 +172,10 @@ impl Branch {
 
             let branch = Branch::new_unconditional(root_node_id);
             return Ok(branch);
+        } else {
+            let s = format!("Failed to identify type of IF directive");
+            return Err(AstError::InvalidSyntax(s));
         }
-
-        let s = format!("Failed to parse branch of IF directive in {}", branch_str);
-        return Err(AstError::InvalidSyntax(s));
     }
 
     pub fn new_unconditional(root_node_id: NodeId) -> Self {

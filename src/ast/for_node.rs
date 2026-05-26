@@ -124,10 +124,6 @@ impl ForNode {
         &self.r_identifier
     }
 
-    pub fn root_node_id(&self) -> NodeId {
-        self.root_node_id
-    }
-
     pub fn parse(s: &str, hint: Hint, ctx: &mut Context) -> Result<Node, AstError> {
         let initial_s = s.to_string();
 
