@@ -1,10 +1,8 @@
-use super::ast;
 use super::branch::Branch;
 use super::error::AstError;
 use super::hint::Hint;
-use super::literal::Literal;
 use super::node::Node;
-use crate::config::{self, DIRECTIVE_END, IF_DIRECTIVE_START};
+use crate::config::{DIRECTIVE_END, IF_DIRECTIVE_START};
 use crate::context::Context;
 use crate::store::NodeStore;
 
@@ -92,7 +90,55 @@ impl IfNode {
     }
 
     pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
-        Ok(String::new())
+        ctx.hint_stack.push(self.hint);
+        ctx.call_stack
+            .get_mut_current_frame()
+            .ok_or_else(|| {
+                let s = format!("Failed to find current frame");
+                AstError::EvaluationFailed(s)
+            })?
+            .enter_new_scope();
+
+        let mut result = String::new();
+
+        for branch in &self.branches {
+            let branch_to_take = branch.evaluate(ctx).map_err(|e| {
+                let s = format!(
+                    "Failed to evaluate branch in IF directive\n{}",
+                    e.to_string()
+                );
+                AstError::EvaluationFailed(s)
+            })?;
+
+            if branch_to_take {
+                let root = ctx.node_store.take(branch.root_node_id()).ok_or_else(|| {
+                    let s = format!("Failed to find node with id {:?}", branch.root_node_id());
+                    AstError::EvaluationFailed(s)
+                })?;
+
+                let branch_result = root.evaluate(ctx).map_err(|e| {
+                    let s = format!(
+                        "Failed to evaluate branch of IF directive\n{}",
+                        e.to_string()
+                    );
+                    AstError::EvaluationFailed(s)
+                })?;
+
+                ctx.node_store.put_back(branch.root_node_id(), root);
+                result.push_str(&branch_result);
+                break;
+            }
+        }
+
+        ctx.call_stack
+            .get_mut_current_frame()
+            .ok_or_else(|| {
+                let s = format!("Failed to find current frame");
+                AstError::EvaluationFailed(s)
+            })?
+            .exit_current_scope();
+        ctx.hint_stack.pop();
+        Ok(result)
     }
 
     pub fn to_string(&self) -> String {

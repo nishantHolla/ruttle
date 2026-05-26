@@ -1,4 +1,5 @@
 use super::scope::{Fingerprint, Scope, ScopeDef};
+use crate::ast::Literal;
 use crate::store::FileId;
 
 pub struct Frame {
@@ -41,6 +42,26 @@ impl Frame {
         } else {
             self.scopes.last_mut()
         }
+    }
+
+    pub fn resolve_to_lit(&self, key: &str) -> Option<Literal> {
+        for scope in self.scopes.iter().rev() {
+            if let Some(lit) = scope.resolve_to_lit(key) {
+                return Some(lit);
+            }
+        }
+
+        None
+    }
+
+    pub fn resolve(&self, key: &str) -> Option<String> {
+        for scope in self.scopes.iter().rev() {
+            if let Some(lit) = scope.resolve(key) {
+                return Some(lit);
+            }
+        }
+
+        None
     }
 
     // pub fn set_definition(&mut self, key: &str, lit: Literal) {

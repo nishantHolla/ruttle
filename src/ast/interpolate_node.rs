@@ -33,12 +33,12 @@ impl InterpolateNode {
     pub fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
         ctx.hint_stack.push(self.hint);
 
-        let current_scope = ctx.call_stack.get_current_scope().ok_or_else(|| {
-            let s = format!("Failed to find current scope");
+        let current_frame = ctx.call_stack.get_current_frame().ok_or_else(|| {
+            let s = format!("Failed to find current frame");
             AstError::EvaluationFailed(s)
         })?;
 
-        let lit = current_scope.resolve_to_lit(&self.key).ok_or_else(|| {
+        let lit = current_frame.resolve_to_lit(&self.key).ok_or_else(|| {
             let s = format!("Failed to resolve symbol '{}'", self.key);
             AstError::EvaluationFailed(s)
         })?;

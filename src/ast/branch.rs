@@ -38,6 +38,16 @@ impl UnconditionalBranch {
     }
 }
 
+pub enum Comparison {
+    Equals,
+    NotEquals,
+    Less,
+    Greater,
+    LessOrEquals,
+    GreaterOrEquals,
+    Unconditional,
+}
+
 #[derive(Debug)]
 pub enum Branch {
     Equals(ConditionalBranch),
@@ -50,6 +60,18 @@ pub enum Branch {
 }
 
 impl Branch {
+    pub fn root_node_id(&self) -> NodeId {
+        match self {
+            Branch::Equals(e) => e.root_node_id(),
+            Branch::NotEquals(e) => e.root_node_id(),
+            Branch::Less(e) => e.root_node_id(),
+            Branch::Greater(e) => e.root_node_id(),
+            Branch::LessOrEquals(e) => e.root_node_id(),
+            Branch::GreaterOrEquals(e) => e.root_node_id(),
+            Branch::Unconditional(e) => e.root_node_id(),
+        }
+    }
+
     pub fn parse(
         branch_str: &str,
         initial_s: &str,
@@ -184,6 +206,49 @@ impl Branch {
                 root_node_id,
             })),
             _ => None,
+        }
+    }
+
+    fn evaluate_conditional(
+        &self,
+        ctx: &mut Context,
+        e: &ConditionalBranch,
+    ) -> Result<bool, AstError> {
+        let l = e.left().evaluate_to_lit(ctx).ok_or_else(|| {
+            let s = format!("Failed to evaluate left literal");
+            AstError::EvaluationFailed(s)
+        })?;
+
+        let r = e.right().evaluate_to_lit(ctx).ok_or_else(|| {
+            let s = format!("Failed to evaluate right literal");
+            AstError::EvaluationFailed(s)
+        })?;
+
+        let result = match self {
+            Branch::Equals(_) => l.compare(&r, Comparison::Equals),
+            Branch::NotEquals(_) => l.compare(&r, Comparison::NotEquals),
+            Branch::Less(_) => l.compare(&r, Comparison::Less),
+            Branch::Greater(_) => l.compare(&r, Comparison::Greater),
+            Branch::LessOrEquals(_) => l.compare(&r, Comparison::LessOrEquals),
+            Branch::GreaterOrEquals(_) => l.compare(&r, Comparison::GreaterOrEquals),
+            Branch::Unconditional(_) => Ok(true),
+        };
+
+        result.map_err(|e| {
+            let s = format!("Failed to compare condition\n{}", e);
+            AstError::EvaluationFailed(s)
+        })
+    }
+
+    pub fn evaluate(&self, ctx: &mut Context) -> Result<bool, AstError> {
+        match self {
+            Branch::Equals(e) => self.evaluate_conditional(ctx, e),
+            Branch::NotEquals(e) => self.evaluate_conditional(ctx, e),
+            Branch::Less(e) => self.evaluate_conditional(ctx, e),
+            Branch::Greater(e) => self.evaluate_conditional(ctx, e),
+            Branch::LessOrEquals(e) => self.evaluate_conditional(ctx, e),
+            Branch::GreaterOrEquals(e) => self.evaluate_conditional(ctx, e),
+            Branch::Unconditional(_) => Ok(true),
         }
     }
 
