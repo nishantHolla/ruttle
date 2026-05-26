@@ -9,6 +9,7 @@ use crate::util;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
+#[derive(Clone)]
 pub struct IncludeNode {
     file_id: FileId,
     props: BTreeMap<String, Literal>,

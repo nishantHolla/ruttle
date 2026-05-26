@@ -6,7 +6,7 @@ use crate::context::Context;
 use crate::store::{NodeId, NodeStore};
 use crate::util;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConditionalBranch {
     left: Literal,
     right: Literal,
@@ -27,7 +27,7 @@ impl ConditionalBranch {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UnconditionalBranch {
     root_node_id: NodeId,
 }
@@ -48,7 +48,7 @@ pub enum Comparison {
     Unconditional,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Branch {
     Equals(ConditionalBranch),
     NotEquals(ConditionalBranch),

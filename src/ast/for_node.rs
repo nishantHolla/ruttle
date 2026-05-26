@@ -9,6 +9,7 @@ use crate::store::{FileId, NodeId, NodeStore};
 use serde_json::Value;
 use std::path::PathBuf;
 
+#[derive(Clone)]
 enum ForType {
     Iteration(ForIteration),
     Json(ForJson),
@@ -23,6 +24,7 @@ impl ForType {
     }
 }
 
+#[derive(Clone)]
 pub struct ForIteration {
     start: i64,
     end: i64,
@@ -43,6 +45,7 @@ impl ForIteration {
     }
 }
 
+#[derive(Clone)]
 pub struct ForJson {
     file_id: FileId,
 }
@@ -53,6 +56,7 @@ impl ForJson {
     }
 }
 
+#[derive(Clone)]
 pub struct ForNode {
     for_type: ForType,
     l_identifier: String,
@@ -73,7 +77,7 @@ impl AstNode for ForNode {
             .enter_new_scope();
 
         let root_node_id = self.root_node_id;
-        let root = ctx.node_store.take(root_node_id).ok_or_else(|| {
+        let root = ctx.node_store.get_clone(root_node_id).ok_or_else(|| {
             let s = format!("Failed to find node with id {:?}", root_node_id);
             AstError::EvaluationFailed(s)
         })?;
@@ -82,8 +86,6 @@ impl AstNode for ForNode {
             ForType::Iteration(i) => ForNode::evaluate_iteration(&self, i, &root, ctx),
             ForType::Json(j) => ForNode::evaluate_json(&self, j, &root, ctx),
         }?;
-
-        ctx.node_store.put_back(self.root_node_id, root);
 
         ctx.call_stack
             .get_mut_current_frame()

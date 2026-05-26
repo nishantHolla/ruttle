@@ -107,7 +107,7 @@ impl Context {
             .to_path_buf();
 
         let node_id = self.ast_map.get(file_id).unwrap();
-        let node = self.node_store.take(node_id).ok_or_else(|| {
+        let node = self.node_store.get_clone(node_id).ok_or_else(|| {
             let s = format!("Infinite include detected");
             ContextError::GenerationError(s)
         })?;
@@ -121,7 +121,6 @@ impl Context {
             ContextError::GenerationError(s)
         })?;
 
-        self.node_store.put_back(node_id, node);
         Ok(result)
     }
 

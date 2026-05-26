@@ -8,6 +8,7 @@ use crate::store::{FileId, NodeId, NodeStore};
 use crate::util;
 use std::path::PathBuf;
 
+#[derive(Clone)]
 pub struct WithNode {
     file_id: FileId,
     root_node_id: NodeId,
@@ -47,7 +48,7 @@ impl AstNode for WithNode {
                 AstError::EvaluationFailed(s)
             })?;
 
-        let root = ctx.node_store.take(self.root_node_id).ok_or_else(|| {
+        let root = ctx.node_store.get_clone(self.root_node_id).ok_or_else(|| {
             let s = format!("Failed to find node with id {:?}", self.root_node_id);
             AstError::EvaluationFailed(s)
         })?;
@@ -57,7 +58,6 @@ impl AstNode for WithNode {
             AstError::EvaluationFailed(s)
         })?;
 
-        ctx.node_store.put_back(self.root_node_id, root);
         ctx.call_stack
             .get_mut_current_frame()
             .ok_or_else(|| {

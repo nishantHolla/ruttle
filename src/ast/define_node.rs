@@ -7,6 +7,7 @@ use crate::context::Context;
 use crate::store::NodeStore;
 use crate::util;
 
+#[derive(Clone)]
 pub struct DefineNode {
     key: String,
     value: Literal,

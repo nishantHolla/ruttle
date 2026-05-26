@@ -6,6 +6,7 @@ use crate::config::{DIRECTIVE_END, IF_DIRECTIVE_START};
 use crate::context::Context;
 use crate::store::NodeStore;
 
+#[derive(Clone)]
 pub struct IfNode {
     hint: Hint,
     branches: Vec<Branch>,
@@ -34,10 +35,13 @@ impl AstNode for IfNode {
             })?;
 
             if branch_to_take {
-                let root = ctx.node_store.take(branch.root_node_id()).ok_or_else(|| {
-                    let s = format!("Failed to find node with id {:?}", branch.root_node_id());
-                    AstError::EvaluationFailed(s)
-                })?;
+                let root = ctx
+                    .node_store
+                    .get_clone(branch.root_node_id())
+                    .ok_or_else(|| {
+                        let s = format!("Failed to find node with id {:?}", branch.root_node_id());
+                        AstError::EvaluationFailed(s)
+                    })?;
 
                 let branch_result = root.evaluate(ctx).map_err(|e| {
                     let s = format!(
@@ -47,7 +51,6 @@ impl AstNode for IfNode {
                     AstError::EvaluationFailed(s)
                 })?;
 
-                ctx.node_store.put_back(branch.root_node_id(), root);
                 result.push_str(&branch_result);
                 break;
             }

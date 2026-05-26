@@ -24,22 +24,12 @@ impl NodeStore {
         self.node_list.get(node_id.0)?.as_ref()
     }
 
+    pub fn get_clone(&self, node_id: NodeId) -> Option<Node> {
+        self.get(node_id).cloned()
+    }
+
     pub fn get_mut(&mut self, node_id: NodeId) -> Option<&mut Node> {
         self.node_list.get_mut(node_id.0)?.as_mut()
-    }
-
-    pub fn take(&mut self, node_id: NodeId) -> Option<Node> {
-        self.node_list.get_mut(node_id.0)?.take()
-    }
-
-    pub fn put_back(&mut self, node_id: NodeId, node: Node) -> bool {
-        match self.node_list.get_mut(node_id.0) {
-            Some(slot @ None) => {
-                *slot = Some(node);
-                true
-            }
-            _ => false,
-        }
     }
 
     pub fn debug(&self) {

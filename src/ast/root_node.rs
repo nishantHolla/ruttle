@@ -3,6 +3,7 @@ use super::node::{AstNode, Node};
 use crate::context::Context;
 use crate::store::{NodeId, NodeStore};
 
+#[derive(Clone)]
 pub struct RootNode {
     children: Vec<NodeId>,
 }
@@ -12,15 +13,13 @@ impl AstNode for RootNode {
         let mut result = String::new();
 
         for node_id in &self.children {
-            let node = ctx.node_store.take(*node_id).ok_or_else(|| {
+            let node = ctx.node_store.get_clone(*node_id).ok_or_else(|| {
                 let s = format!("Failed to find node with id {:?}", node_id);
                 AstError::EvaluationFailed(s)
             })?;
 
             let eval = node.evaluate(ctx)?;
             result.push_str(&eval);
-
-            ctx.node_store.put_back(*node_id, node);
         }
 
         Ok(result)
