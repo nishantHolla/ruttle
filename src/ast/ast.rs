@@ -7,6 +7,7 @@ use crate::util;
 
 use super::define_node::DefineNode;
 use super::for_node::ForNode;
+use super::if_node::IfNode;
 use super::include_node::IncludeNode;
 use super::interpolate_node::InterpolateNode;
 use super::node::Node;
@@ -28,6 +29,8 @@ fn parse_directive(s: &str, hint: Hint, ctx: &mut Context) -> Result<Node, AstEr
         r = WithNode::parse(&s, hint, ctx);
     } else if s.starts_with(config::FOR_DIRECTIVE_START) {
         r = ForNode::parse(&s, hint, ctx);
+    } else if s.starts_with(config::IF_DIRECTIVE_START) {
+        r = IfNode::parse(&s, hint, ctx);
     } else {
         let s = format!("Found unknown directive {}", s);
         r = Err(AstError::UnknownDirective(s));

@@ -3,6 +3,7 @@ mod define_node;
 pub mod error;
 mod for_node;
 mod hint;
+mod if_node;
 mod include_node;
 mod interpolate_node;
 mod literal;

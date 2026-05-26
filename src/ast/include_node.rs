@@ -128,6 +128,8 @@ impl IncludeNode {
             AstError::EvaluationFailed(s)
         })?;
 
+        let result = result.trim().to_string();
+
         ctx.call_stack.pop();
         ctx.hint_stack.pop();
         Ok(result)
