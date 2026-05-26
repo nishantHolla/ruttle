@@ -1,5 +1,5 @@
 use clap::Parser;
-use torgo::{AppError, Args, Context};
+use ruttle::{AppError, Args, Context};
 
 fn main() {
     if let Err((e, context)) = run() {
