@@ -2,6 +2,7 @@ use super::error::OutMapError;
 use crate::config;
 use crate::store::{FileId, FileStore};
 use crate::util;
+use minify_html::{Cfg, minify};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
@@ -22,6 +23,21 @@ impl OutMap {
 
     pub fn insert(&mut self, file_id: FileId, string: impl Into<String>) {
         self.map.insert(file_id, string.into());
+    }
+
+    pub fn minify(&mut self) {
+        let cfg = Cfg {
+            minify_js: true,
+            minify_css: true,
+            keep_comments: false,
+            keep_closing_tags: false,
+            ..Cfg::new()
+        };
+
+        for html in self.map.values_mut() {
+            let minified = minify(html.as_bytes(), &cfg);
+            *html = String::from_utf8(minified).unwrap();
+        }
     }
 
     pub fn save(&self, file_store: &FileStore) -> Result<(), OutMapError> {

@@ -14,6 +14,9 @@ pub struct Args {
     pub debug: bool,
 
     #[arg(short, long)]
+    pub minify: bool,
+
+    #[arg(short, long)]
     pub output: PathBuf,
 
     #[arg(required = true)]
@@ -73,6 +76,7 @@ impl Args {
         Ok(Args {
             inputs,
             output,
+            minify: args.minify,
             debug: args.debug,
         })
     }

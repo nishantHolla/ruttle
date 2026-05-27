@@ -30,6 +30,11 @@ fn run() -> Result<(), (AppError, Option<Context>)> {
         return Err((AppError::Context(e), Some(context)));
     }
 
+    // Minify output if required
+    if args.minify {
+        context.minify();
+    }
+
     // Save output of the context
     let result = context.finalize();
     if let Err(e) = result {

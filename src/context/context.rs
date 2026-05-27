@@ -131,6 +131,10 @@ impl Context {
         })
     }
 
+    pub fn minify(&mut self) {
+        self.out_map.minify();
+    }
+
     pub fn debug(&self) {
         self.file_store.debug();
         self.node_store.debug();
