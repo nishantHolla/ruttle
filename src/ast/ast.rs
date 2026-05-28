@@ -2,7 +2,7 @@ use super::error::AstError;
 use super::hint::Hint;
 use crate::config;
 use crate::context::Context;
-use crate::store::{FileId, NodeId};
+use crate::store::{FileId, NodeId, NodeType};
 use crate::util;
 
 use super::define_node::DefineNode;
@@ -11,36 +11,46 @@ use super::if_node::IfNode;
 use super::include_node::IncludeNode;
 use super::interpolate_node::InterpolateNode;
 use super::node::Node;
+use super::once_node::OnceNode;
 use super::root_node::RootNode;
 use super::text_node::TextNode;
 use super::with_node::WithNode;
 
-fn parse_directive(s: &str, hint: Hint, ctx: &mut Context) -> Result<Node, AstError> {
+fn parse_directive(s: &str, hint: Hint, ctx: &mut Context) -> Result<(Node, NodeType), AstError> {
     ctx.hint_stack.push(hint);
     let r: Result<Node, AstError>;
+    let mut node_type: NodeType = NodeType::RootNode;
 
     if s.starts_with(config::DEFINE_DIRECTIVE_START) {
         r = DefineNode::parse(&s, hint);
+        node_type = NodeType::DefineNode;
     } else if s.starts_with(config::INTERPOLATE_DIRECTIVE_START) {
         r = InterpolateNode::parse(&s, hint);
+        node_type = NodeType::InterpolateNode;
     } else if s.starts_with(config::INCLUDE_DIRECTIVE_START) {
         r = IncludeNode::parse(&s, hint, ctx);
+        node_type = NodeType::IncludeNode;
     } else if s.starts_with(config::WITH_DIRECTIVE_START) {
         r = WithNode::parse(&s, hint, ctx);
+        node_type = NodeType::WithNode;
     } else if s.starts_with(config::FOR_DIRECTIVE_START) {
         r = ForNode::parse(&s, hint, ctx);
+        node_type = NodeType::ForNode;
     } else if s.starts_with(config::IF_DIRECTIVE_START) {
         r = IfNode::parse(&s, hint, ctx);
+        node_type = NodeType::IfNode;
+    } else if s.starts_with(config::ONCE_DIRECTIVE_START) {
+        r = OnceNode::parse(&s, hint, ctx);
+        node_type = NodeType::OnceNode;
     } else {
         let s = format!("Found unknown directive {}", s);
         r = Err(AstError::UnknownDirective(s));
     }
 
-    if let Ok(_) = r {
-        ctx.hint_stack.pop();
+    match r {
+        Ok(t) => Ok((t, node_type)),
+        Err(e) => Err(e),
     }
-
-    return r;
 }
 
 fn parse(
@@ -69,7 +79,7 @@ fn parse(
             if text.trim().len() > 0 {
                 let hint = Hint::new(file_id, cursor, mat.start() - 1);
                 let node = TextNode::parse(hint)?;
-                let node_id = ctx.node_store.add(node);
+                let node_id = ctx.node_store.add(node, NodeType::TextNode);
                 nodes.push(node_id);
             }
         }
@@ -88,8 +98,8 @@ fn parse(
 
         // Parse directive
         let hint = Hint::new(file_id, mat.start(), end);
-        let node = parse_directive(directive_str, hint, ctx)?;
-        let node_id = ctx.node_store.add(node);
+        let (node, node_type) = parse_directive(directive_str, hint, ctx)?;
+        let node_id = ctx.node_store.add(node, node_type);
         nodes.push(node_id);
 
         // Advance cursor
@@ -103,14 +113,14 @@ fn parse(
         if text.trim().len() > 0 {
             let hint = Hint::new(file_id, cursor, end_pos);
             let node = TextNode::parse(hint)?;
-            let node_id = ctx.node_store.add(node);
+            let node_id = ctx.node_store.add(node, NodeType::TextNode);
             nodes.push(node_id);
         }
     }
 
     // Create the root and return it
     let root = RootNode::new(nodes);
-    let root_node_id = ctx.node_store.add(root);
+    let root_node_id = ctx.node_store.add(root, NodeType::RootNode);
     Ok(root_node_id)
 }
 

@@ -13,9 +13,10 @@ pub const INCLUDE_DIRECTIVE_START: &str = "{#include";
 pub const WITH_DIRECTIVE_START: &str = "{#with";
 pub const FOR_DIRECTIVE_START: &str = "{#for";
 pub const IF_DIRECTIVE_START: &str = "{#if";
+pub const ONCE_DIRECTIVE_START: &str = "{#once";
 pub const DIRECTIVE_END: &str = "}";
 
-pub const DIRECTIVE_REGEX: &str = r"\{#(define|value|include|with|for|if)\b";
+pub const DIRECTIVE_REGEX: &str = r"\{#(define|value|include|with|for|if|once)\b";
 pub const FOR_DIRECTIVE_REGEX: &str = r"(?<l>\w+)[\s\n]*,[\s\n]*(?<r>\w+)[\s\n]+(?<keyword>\w+)[\s\n]+(?:(?<range>[+\-]?\d+\.\.[+\-]?\d+\.\.[+\-]?\d+)|(?<path>\S+))[\s\n]+(?<body>.*)$";
 pub const INTERPOLATE_DIRECTIVE_REGEX: &str = r"\{#value[\s\n]+([\w.]+)[\s\n]*\}";
 

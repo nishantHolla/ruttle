@@ -9,6 +9,7 @@ mod include_node;
 mod interpolate_node;
 mod literal;
 mod node;
+mod once_node;
 mod root_node;
 mod text_node;
 mod with_node;
