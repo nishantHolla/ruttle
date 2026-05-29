@@ -28,6 +28,27 @@ impl OpenFiles {
         }
     }
 
+    pub fn get_value(&self, key: &str) -> Option<Value> {
+        let mut parts = key.split('.');
+        let identifier = parts.next().unwrap();
+        let parts: Vec<&str> = parts.collect();
+
+        if parts.len() == 0 {
+            return None;
+        }
+
+        if !self.identifier_map.contains_key(identifier) {
+            return None;
+        }
+
+        let file_type = self.identifier_map.get(identifier).unwrap();
+        if let FileType::Pseudo(p) = file_type {
+            return JsonFile::resolve_to_value(p, &parts);
+        } else {
+            return None;
+        }
+    }
+
     pub fn get(&self, key: &str) -> Option<String> {
         let mut parts = key.split('.');
         let identifier = parts.next().unwrap();

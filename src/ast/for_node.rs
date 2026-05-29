@@ -13,6 +13,7 @@ use std::path::PathBuf;
 enum ForType {
     Iteration(ForIteration),
     Json(ForJson),
+    Collection(ForCollection),
 }
 
 impl ForType {
@@ -20,6 +21,7 @@ impl ForType {
         match self {
             ForType::Iteration(i) => format!("Iteration({}, {}, {})", i.start(), i.end(), i.step()),
             ForType::Json(j) => format!("Json({:?})", j.file_id()),
+            ForType::Collection(c) => format!("Collection({:?})", c.identifier()),
         }
     }
 }
@@ -57,6 +59,17 @@ impl ForJson {
 }
 
 #[derive(Clone)]
+pub struct ForCollection {
+    identifier: String,
+}
+
+impl ForCollection {
+    pub fn identifier(&self) -> String {
+        self.identifier.clone()
+    }
+}
+
+#[derive(Clone)]
 pub struct ForNode {
     for_type: ForType,
     l_identifier: String,
@@ -85,6 +98,7 @@ impl AstNode for ForNode {
         let r = match &self.for_type {
             ForType::Iteration(i) => ForNode::evaluate_iteration(&self, i, &root, ctx),
             ForType::Json(j) => ForNode::evaluate_json(&self, j, &root, ctx),
+            ForType::Collection(c) => ForNode::evaluate_collection(&self, c, &root, ctx),
         }?;
 
         ctx.call_stack
@@ -194,6 +208,10 @@ impl ForNode {
                 })?;
 
                 Ok(ForType::Iteration(ForIteration { start, end, step }))
+            } else if !path.is_empty() && path.contains(".") && !path.contains("/") {
+                Ok(ForType::Collection(ForCollection {
+                    identifier: path.to_string(),
+                }))
             } else if !path.is_empty() {
                 let mut for_path = PathBuf::from(path);
                 if for_path.is_relative() {
@@ -404,6 +422,17 @@ impl ForNode {
                                 .map_err(|e| AstError::EvaluationFailed(e.to_string()))?;
                         }
 
+                        Value::Array(_) => {
+                            ctx.call_stack
+                                .get_mut_current_scope()
+                                .ok_or_else(|| {
+                                    let s = format!("Failed to find current scope");
+                                    AstError::EvaluationFailed(s)
+                                })?
+                                .open_pseudo(for_node.r_identifier(), j)
+                                .map_err(|e| AstError::EvaluationFailed(e.to_string()))?;
+                        }
+
                         _ => {
                             let s = format!("Unsupported json format");
                             return Err(AstError::EvaluationFailed(s));
@@ -477,6 +506,173 @@ impl ForNode {
 
             _ => {
                 let s = format!("Unknown json value at {}", path.display());
+                return Err(AstError::EvaluationFailed(s));
+            }
+        }
+
+        Ok(result)
+    }
+
+    fn evaluate_collection(
+        for_node: &ForNode,
+        node: &ForCollection,
+        root: &Node,
+        ctx: &mut Context,
+    ) -> Result<String, AstError> {
+        let value = ctx
+            .call_stack
+            .get_current_frame()
+            .ok_or_else(|| {
+                let s = format!("Failed to find current frame");
+                AstError::EvaluationFailed(s)
+            })?
+            .resolve_to_value(&node.identifier())
+            .ok_or_else(|| {
+                let s = format!("Failed to resolve identifier '{}'", node.identifier());
+                AstError::EvaluationFailed(s)
+            })?;
+
+        let mut result = String::new();
+
+        match &value {
+            Value::Array(arr) => {
+                for (i, j) in arr.iter().enumerate() {
+                    ctx.call_stack
+                        .get_mut_current_scope()
+                        .ok_or_else(|| {
+                            let s = format!("Failed to find current scope");
+                            AstError::EvaluationFailed(s)
+                        })?
+                        .set(
+                            for_node.l_identifier(),
+                            Literal::Integer(i64::try_from(i).unwrap()),
+                        );
+
+                    match j {
+                        Value::String(value) => {
+                            ctx.call_stack
+                                .get_mut_current_scope()
+                                .ok_or_else(|| {
+                                    let s = format!("Failed to find current scope");
+                                    AstError::EvaluationFailed(s)
+                                })?
+                                .set(for_node.r_identifier(), Literal::String(value.clone()));
+                        }
+
+                        Value::Number(value) => {
+                            ctx.call_stack
+                                .get_mut_current_scope()
+                                .ok_or_else(|| {
+                                    let s = format!("Failed to find current scope");
+                                    AstError::EvaluationFailed(s)
+                                })?
+                                .set(for_node.r_identifier(), Literal::String(value.to_string()));
+                        }
+
+                        Value::Bool(b) => {
+                            ctx.call_stack
+                                .get_mut_current_scope()
+                                .ok_or_else(|| {
+                                    let s = format!("Failed to find current scope");
+                                    AstError::EvaluationFailed(s)
+                                })?
+                                .set(for_node.r_identifier(), Literal::String(b.to_string()));
+                        }
+
+                        Value::Object(_) => {
+                            ctx.call_stack
+                                .get_mut_current_scope()
+                                .ok_or_else(|| {
+                                    let s = format!("Failed to find current scope");
+                                    AstError::EvaluationFailed(s)
+                                })?
+                                .open_pseudo(for_node.r_identifier(), j)
+                                .map_err(|e| AstError::EvaluationFailed(e.to_string()))?;
+                        }
+
+                        Value::Array(_) => {
+                            ctx.call_stack
+                                .get_mut_current_scope()
+                                .ok_or_else(|| {
+                                    let s = format!("Failed to find current scope");
+                                    AstError::EvaluationFailed(s)
+                                })?
+                                .open_pseudo(for_node.r_identifier(), j)
+                                .map_err(|e| AstError::EvaluationFailed(e.to_string()))?;
+                        }
+
+                        _ => {
+                            let s = format!("Unsupported json format");
+                            return Err(AstError::EvaluationFailed(s));
+                        }
+                    }
+
+                    let iteration_result = root.evaluate(ctx).map_err(|e| {
+                        let s = format!("Failed to evaluate FOR directive\n{}", e.to_string());
+                        AstError::EvaluationFailed(s)
+                    })?;
+
+                    result.push_str(&iteration_result);
+                }
+            }
+            Value::Object(obj) => {
+                for (i, j) in obj.iter() {
+                    ctx.call_stack
+                        .get_mut_current_scope()
+                        .ok_or_else(|| {
+                            let s = format!("Failed to find current scope");
+                            AstError::EvaluationFailed(s)
+                        })?
+                        .set(for_node.l_identifier(), Literal::String(i.clone()));
+
+                    match j {
+                        Value::String(s) => {
+                            ctx.call_stack
+                                .get_mut_current_scope()
+                                .ok_or_else(|| {
+                                    let s = format!("Failed to find current scope");
+                                    AstError::EvaluationFailed(s)
+                                })?
+                                .set(for_node.r_identifier(), Literal::String(s.clone()));
+                        }
+
+                        Value::Number(i) => {
+                            ctx.call_stack
+                                .get_mut_current_scope()
+                                .ok_or_else(|| {
+                                    let s = format!("Failed to find current scope");
+                                    AstError::EvaluationFailed(s)
+                                })?
+                                .set(for_node.r_identifier(), Literal::String(i.to_string()));
+                        }
+
+                        Value::Bool(b) => {
+                            ctx.call_stack
+                                .get_mut_current_scope()
+                                .ok_or_else(|| {
+                                    let s = format!("Failed to find current scope");
+                                    AstError::EvaluationFailed(s)
+                                })?
+                                .set(for_node.r_identifier(), Literal::String(b.to_string()));
+                        }
+
+                        _ => {
+                            let s = format!("Unsupported json format");
+                            return Err(AstError::EvaluationFailed(s));
+                        }
+                    }
+
+                    let iteration_result = root.evaluate(ctx).map_err(|e| {
+                        let s = format!("Failed to evaluate FOR directive\n{}", e.to_string());
+                        AstError::EvaluationFailed(s)
+                    })?;
+
+                    result.push_str(&iteration_result);
+                }
+            }
+
+            _ => {
+                let s = format!("Unsupported json structure");
                 return Err(AstError::EvaluationFailed(s));
             }
         }

@@ -28,6 +28,25 @@ impl JsonFile {
         Ok(Self { file_id, value })
     }
 
+    pub fn resolve_to_value(value: &Value, parts: &[&str]) -> Option<Value> {
+        let mut v = value;
+
+        for part in parts {
+            if let Ok(num) = part.parse::<usize>() {
+                match v {
+                    Value::Array(a) => {
+                        v = a.get(num)?;
+                    }
+                    _ => return None,
+                }
+            } else {
+                v = v.get(*part)?;
+            }
+        }
+
+        Some(v.clone())
+    }
+
     pub fn resolve(value: &Value, parts: &[&str]) -> Option<String> {
         let mut v = value;
 

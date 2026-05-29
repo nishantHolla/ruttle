@@ -41,6 +41,10 @@ impl Scope {
         self.definitions.get(key)
     }
 
+    pub fn resolve_to_value(&self, key: &str) -> Option<Value> {
+        self.open_files.get_value(key)
+    }
+
     pub fn resolve_to_lit(&self, key: &str) -> Option<Literal> {
         if key.contains('.') {
             self.open_files.get(key).map(|s| Literal::String(s))
