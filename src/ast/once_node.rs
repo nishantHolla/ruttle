@@ -14,12 +14,14 @@ pub struct OnceNode {
 
 impl AstNode for OnceNode {
     fn evaluate(&self, ctx: &mut Context) -> Result<String, AstError> {
+        ctx.hint_stack.push(self.hint);
         let node = ctx.node_store.get_clone(self.root_node_id).ok_or_else(|| {
             let s = format!("Failed to find node with id {:?}", self.root_node_id);
             AstError::EvaluationFailed(s)
         })?;
 
         let result = node.evaluate(ctx)?;
+        ctx.hint_stack.pop();
         Ok(result)
     }
 
