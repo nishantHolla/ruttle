@@ -70,7 +70,7 @@ if the input and output directories are the same.
 Given the file:
 
 ```html
-<!-- src/index.rtl -->
+<!-- src/index.part.html -->
 {#define title="Hello from Ruttle"}
 
 <h1>{#value title}</h1>
