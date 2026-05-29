@@ -49,6 +49,21 @@ impl OpenFiles {
         }
     }
 
+    pub fn get_open_file_id(&self, key: &str) -> Option<FileId> {
+        let mut parts = key.split('.');
+        let identifier = parts.next().unwrap();
+
+        if self.identifier_map.contains_key(identifier) {
+            let file_type = self.identifier_map.get(identifier).unwrap();
+            match file_type {
+                FileType::Concrete(c) => return Some(c).cloned(),
+                FileType::Pseudo(_) => return None,
+            }
+        }
+
+        return None;
+    }
+
     pub fn get(&self, key: &str) -> Option<String> {
         let mut parts = key.split('.');
         let identifier = parts.next().unwrap();

@@ -26,10 +26,29 @@ impl AstNode for InterpolateNode {
             AstError::EvaluationFailed(s)
         })?;
 
-        let result = lit.evaluate(ctx).ok_or_else(|| {
-            let s = format!("Failed to evaluate literal {}", lit.to_string());
-            AstError::EvaluationFailed(s)
-        })?;
+        let result = if self.is_content_string()
+            && let Some(file_id) = current_frame.get_open_file_id(&self.key)
+        {
+            if !ctx.ast_map.has_ast_for(file_id) {
+                let s = format!("Failed to find ast of file id {:?}", file_id);
+                return Err(AstError::EvaluationFailed(s));
+            }
+
+            let root_node_id = ctx.ast_map.get(file_id).unwrap();
+            let root_node = ctx.node_store.get_clone(root_node_id).unwrap();
+
+            let result = root_node.evaluate(ctx).map_err(|e| {
+                let s = format!("Failed to evaluate open file\n{}", e.to_string());
+                AstError::EvaluationFailed(s)
+            })?;
+
+            util::string::remove_frontmatter(&result).to_string()
+        } else {
+            lit.evaluate(ctx).ok_or_else(|| {
+                let s = format!("Failed to evaluate literal {}", lit.to_string());
+                AstError::EvaluationFailed(s)
+            })?
+        };
 
         ctx.hint_stack.pop();
         Ok(result)
@@ -65,5 +84,10 @@ impl InterpolateNode {
         };
 
         Ok(Box::new(node))
+    }
+
+    pub fn is_content_string(&self) -> bool {
+        let parts: Vec<&str> = self.key.split('.').collect();
+        parts.len() == 2 && *parts.last().unwrap() == "content"
     }
 }

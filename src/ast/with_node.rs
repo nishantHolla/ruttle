@@ -153,6 +153,10 @@ impl WithNode {
             }),
         }?;
 
+        if with_path.extension().unwrap() == "md" && !ctx.ast_map.has_ast_for(file_id) {
+            ctx.ast_map.add_todo(file_id);
+        }
+
         let body = parts.next().ok_or_else(|| {
             let s = format!("Failed to find 'body' of WITH directive");
             AstError::InvalidSyntax(s)

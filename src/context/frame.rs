@@ -55,6 +55,16 @@ impl Frame {
         None
     }
 
+    pub fn get_open_file_id(&self, key: &str) -> Option<FileId> {
+        for scope in self.scopes.iter().rev() {
+            if let Some(id) = scope.get_open_file_id(key) {
+                return Some(id);
+            }
+        }
+
+        return None;
+    }
+
     pub fn resolve_to_lit(&self, key: &str) -> Option<Literal> {
         for scope in self.scopes.iter().rev() {
             if let Some(lit) = scope.resolve_to_lit(key) {

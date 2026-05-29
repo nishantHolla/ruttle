@@ -45,6 +45,10 @@ impl Scope {
         self.open_files.get_value(key)
     }
 
+    pub fn get_open_file_id(&self, key: &str) -> Option<FileId> {
+        self.open_files.get_open_file_id(key)
+    }
+
     pub fn resolve_to_lit(&self, key: &str) -> Option<Literal> {
         if key.contains('.') {
             self.open_files.get(key).map(|s| Literal::String(s))
