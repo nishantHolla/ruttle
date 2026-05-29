@@ -1,6 +1,6 @@
 [package]
 name = "ruttle"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2024"
 description = "A fast static templating engine for HTML, CSS, and static web assets"
 license = "MIT"

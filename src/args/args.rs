@@ -5,8 +5,8 @@ use clap::Parser;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
-#[command(name = "Terus")]
-#[command(version = "0.2.0")]
+#[command(name = "ruttle")]
+#[command(version = "0.3.0")]
 #[command(about = "Templating engine for HTML, CSS and JS")]
 #[command(long_about = None)]
 pub struct Args {
