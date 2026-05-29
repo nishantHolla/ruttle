@@ -3,6 +3,7 @@ use super::hint::Hint;
 use super::node::{AstNode, Node};
 use crate::config::{DIRECTIVE_END, INTERPOLATE_DIRECTIVE_START};
 use crate::context::Context;
+use crate::handler::MarkdownFile;
 use crate::store::NodeStore;
 use crate::util;
 
@@ -42,7 +43,14 @@ impl AstNode for InterpolateNode {
                 AstError::EvaluationFailed(s)
             })?;
 
-            util::string::remove_frontmatter(&result).to_string()
+            MarkdownFile::md_to_html(&result).map_err(|e| {
+                let s = format!(
+                    "Failed to evaluate literal {}\n{}",
+                    lit.to_string(),
+                    e.to_string()
+                );
+                AstError::EvaluationFailed(s)
+            })?
         } else {
             lit.evaluate(ctx).ok_or_else(|| {
                 let s = format!("Failed to evaluate literal {}", lit.to_string());

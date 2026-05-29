@@ -49,30 +49,6 @@ pub fn is_valid_quote(s: &str) -> bool {
     return !(has_front ^ has_back);
 }
 
-pub fn remove_frontmatter(content: &str) -> &str {
-    let mut lines = content.lines();
-
-    let Some(delimiter) = lines.next() else {
-        return content;
-    };
-
-    if delimiter != "---" && delimiter != "+++" {
-        return content;
-    }
-
-    let mut offset = delimiter.len() + 1; // first line + newline
-
-    for line in lines {
-        offset += line.len() + 1;
-
-        if line == delimiter {
-            return &content[offset..];
-        }
-    }
-
-    content
-}
-
 pub fn get_row_col(string: &str, index: usize) -> Option<(usize, usize)> {
     if index > string.len() {
         return None;

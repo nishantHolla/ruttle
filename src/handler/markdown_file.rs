@@ -31,6 +31,17 @@ impl MarkdownFile {
         None
     }
 
+    pub fn md_to_html(s: &str) -> Result<String, String> {
+        let (_, content) =
+            MarkdownFile::parse(&s).ok_or_else(|| format!("Failed to parse frontmatter"))?;
+
+        let parser = Parser::new(&content);
+        let mut html_output = String::new();
+        html::push_html(&mut html_output, parser);
+
+        Ok(html_output)
+    }
+
     pub fn new(file_id: FileId, path: impl AsRef<Path>) -> Result<Self, String> {
         let s = std::fs::read_to_string(path.as_ref()).map_err(|e| {
             format!(
