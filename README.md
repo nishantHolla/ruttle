@@ -12,6 +12,82 @@ It is designed for building static websites with minimal runtime overhead. It in
 
 Templates are evaluated at build time and compiled into plain static output.
 
+## Installation
+
+Install using Cargo:
+
+```bash
+cargo install ruttle
+```
+
+Verify the installation:
+
+```bash
+ruttle --version
+```
+
+## Usage
+
+Compile one or more template files into an output directory:
+
+```bash
+ruttle --output ./dist ./src/index.part.html
+```
+
+Compile multiple files:
+
+```bash
+ruttle --output ./dist ./src/index.part.html ./src/about.part.html
+```
+
+Compile and minify output:
+
+```bash
+ruttle --minify --output ./dist ./src/index.part.html
+```
+
+Compile with debug logging enabled:
+
+```bash
+ruttle --debug --output ./dist ./src/index.part.html
+```
+
+## Command Line Options
+
+| Flag | Description |
+|------|-------------|
+| `-o`, `--output <DIR>` | Output directory |
+| `-m`, `--minify` | Minify generated output |
+| `-d`, `--debug` | Enable debug logging |
+
+### Arguments
+
+- `<INPUTS>...`: One or more template files to compile. Must end with `.part.html` to prevent accidental overwriting
+if the input and output directories are the same.
+
+## Example
+
+Given the file:
+
+```html
+<!-- src/index.rtl -->
+{#define title="Hello from Ruttle"}
+
+<h1>{#value title}</h1>
+```
+
+Run:
+
+```bash
+ruttle --output ./dist ./src/index.part.html
+```
+
+Generated output:
+
+```html
+<h1>Hello from Ruttle</h1>
+```
+
 ## Template Syntax
 
 - [Variable Definition and Interpolation](#variable-definition-and-interpolation)
